@@ -1,9 +1,8 @@
-package main
+package net_bak2
 
 import (
 	"errors"
 	"fmt"
-	"gocode/elog"
 	"net"
 	"time"
 )
@@ -275,7 +274,7 @@ func funOnDisconnected(client *TcpClient, err error) {
 func funOnReceivedData(client *TcpClient, data []byte) {
 	fmt.Println("funOnReceivedData,", data)
 }
-func main() {
+func main_bak2() {
 	e := easylog.Elog.InitFromFile("config.json")
 	defer easylog.Elog.Terminate()
 	if logger, ok := easylog.Elog.GetDefault(); ok {

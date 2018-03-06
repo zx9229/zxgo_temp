@@ -1,4 +1,4 @@
-package main
+package net_bak1
 
 import (
 	"errors"
@@ -215,7 +215,7 @@ func funOnDisconnected(client *TcpClient, err error) {
 func funOnReceivedData(client *TcpClient, data []byte) {
 	fmt.Println("funOnReceivedData,", data)
 }
-func main() {
+func main_1() {
 	server := NewTcpServer()
 	server.OnConnected = funOnConnected
 	server.OnDisconnected = funOnDisconnected

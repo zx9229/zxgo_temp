@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net"
 	"time"
-
-	"github.com/zx9229/zxgo/File"
 )
 
 //go-tcpsock/server.go
@@ -27,7 +25,6 @@ func handleConn(c net.Conn) {
 }
 
 func main() {
-	File.AppendLine("", "", true)
 	l, err := net.Listen("tcp", ":6889")
 	if err != nil {
 		fmt.Println("listen error:", err)
@@ -35,7 +32,8 @@ func main() {
 	}
 
 	for {
-		c, err := l.Accept()
+		var c net.Conn = nil
+		c, err = l.Accept()
 		if err != nil {
 			fmt.Println("accept error:", err)
 			break
