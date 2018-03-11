@@ -1,4 +1,4 @@
-package main
+package main_obsolete
 
 import (
 	"log"
@@ -8,7 +8,7 @@ import (
 	"github.com/go-xorm/xorm"
 )
 
-func main() {
+func main_obsolete() {
 	var err error = nil
 	var engine *xorm.Engine = nil
 
