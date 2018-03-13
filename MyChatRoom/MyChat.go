@@ -4,30 +4,49 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"sync"
 	"time"
+
+	"golang.org/x/net/websocket"
 
 	"github.com/go-xorm/core"
 	"github.com/go-xorm/xorm"
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var tnPushMessageRaw string = "" //TODO:待初始化.
+var tnPushMessage string = ""    //TODO:待初始化.
+var tnChatMessageRaw string = "" //TODO:待初始化.
+
 type MyChat struct {
-	engine   *xorm.Engine
-	rwMutex  *sync.RWMutex
-	allUser  map[int64]UserData
-	allGroup map[int64]GroupData
-	allKV    map[string]KeyValue
+	engine     *xorm.Engine
+	rwMutex    *sync.Mutex
+	allUser    map[int64]UserData
+	allGroup   map[int64]GroupData
+	allKV      map[string]KeyValue
+	mapRowIdx  map[string]int64     //以Id递增的表,缓存了它的序号.
+	chanPmr    chan *PushMessageRaw //存数据库专用
+	chanPm     chan *PushMessage    //存数据库专用
+	chanCmr    chan *ChatMessageRaw //存数据库专用
+	chanCm     chan *ChatMessage    //存数据库专用
+	mapSession map[*websocket.Conn]string
 }
 
 func NewMyChat() *MyChat {
 	newData := new(MyChat)
 
 	newData.engine = nil
-	newData.rwMutex = new(sync.RWMutex)
+	newData.rwMutex = new(sync.Mutex)
 	newData.allUser = make(map[int64]UserData)
 	newData.allGroup = make(map[int64]GroupData)
 	newData.allKV = make(map[string]KeyValue)
+	newData.mapRowIdx = make(map[string]int64)
+	newData.chanPmr = make(chan *PushMessageRaw, 1024)
+	newData.chanPm = make(chan *PushMessage, 1024)
+	newData.chanCmr = make(chan *ChatMessageRaw, 1024)
+	newData.chanCm = make(chan *ChatMessage, 1024)
+	newData.mapSession = make(map[*websocket.Conn]string)
 
 	return newData
 }
@@ -37,6 +56,7 @@ func (self *MyChat) Engine() *xorm.Engine {
 }
 
 func (self *MyChat) Init(driverName string, dataSourceName string, locationName string) error {
+	//[非]线程安全.
 	var err error = nil
 
 	for _ = range "1" {
@@ -68,6 +88,8 @@ func (self *MyChat) Init(driverName string, dataSourceName string, locationName 
 		if err = self.loadDataFromDbWithLock(); err != nil {
 			break
 		}
+
+		self.mapRowIdx = self.mapRowIdx //TODO:初始化.
 	}
 
 	return err
@@ -392,58 +414,211 @@ func (self *MyChat) DelGroupMemberWithLock(gId *int64, gAlias *string, uId *int6
 	return err
 }
 
-func (self *MyChat) RecvNoticeMessageRaw(dataRaw NoticeMessageRaw) error {
+func (self *MyChat) RecvPushMessageRaw(pushDataRaw *PushMessageRaw) error {
+	//带出去了Id字段的值,再没有修改其他字段.
+	//传进来参数的时候,请传过来new(PushMessageRaw)得到的指针,如果(&PushMessageRaw)我不知道有没有问题.
 	var err error = nil
-
-	self.rwMutex.Lock()
-	defer self.rwMutex.Unlock()
+	var pushData *PushMessage = nil
 
 	for _ = range "1" {
-		if err = self.InsertOne(dataRaw); err != nil {
-			break
-		}
-
-		var lastData NoticeMessageRaw
-		if lastData, err = self.queryLastNoticeMessageRaw(); err != nil {
-			break
-		}
-
 		var newUserI []int64
 		var newUserA []string
-		if myInSlice(0, dataRaw.RecverId) {
+		if myInSlice(0, pushDataRaw.RecverId) {
 			newUserI = []int64{0}
 			newUserA = nil
 		} else {
-			if newUserI, newUserA, err = self.findAndMergeUserWithoutLock(dataRaw.RecverId, dataRaw.RecverAlias); err != nil {
+			if newUserI, newUserA, err = self.findAndMergeUserWithoutLock(pushDataRaw.RecverId, pushDataRaw.RecverAlias); err != nil {
 				break
 			}
 		}
 
 		var newGroupI []int64
 		var newGroupA []string
-		if myInSlice(0, dataRaw.GroupId) {
+		if myInSlice(0, pushDataRaw.GroupId) {
 			newGroupI = []int64{0}
 			newGroupA = nil
 		} else {
-			if newGroupI, newGroupA, err = self.findAndMergeGroupWithoutLock(dataRaw.GroupId, dataRaw.GroupAlias); err != nil {
+			if newGroupI, newGroupA, err = self.findAndMergeGroupWithoutLock(pushDataRaw.GroupId, pushDataRaw.GroupAlias); err != nil {
 				break
 			}
 		}
 
-		lastData.RecverId = newUserI
-		lastData.RecverAlias = newUserA
-		lastData.GroupId = newGroupI
-		lastData.GroupAlias = newGroupA
-
-		data := toPushMessage(&lastData)
-		if err = self.InsertOne(data); err != nil {
-			break
-		}
-
-		//TODO:向所有的socket发送一个信号.
+		pushData = toPushMessage(pushDataRaw)
+		pushData.RecverId = newUserI
+		pushData.RecverAlias = newUserA
+		pushData.GroupId = newGroupI
+		pushData.GroupAlias = newGroupA
 	}
 
+	self.rwMutex.Lock()
+	defer self.rwMutex.Unlock()
+
+	pushDataRaw.Id = self.innerIncrIdxWithoutLock(tnPushMessageRaw)
+	if pushData != nil {
+		pushData.Id = self.innerIncrIdxWithoutLock(tnPushMessage)
+		pushData.IdRaw = pushDataRaw.Id
+		self.chanPm <- pushData //TODO:如果写chan失败了怎么办?
+	}
+	self.chanPmr <- pushDataRaw //TODO:如果写chan失败了怎么办?
+
+	self.mapSession = self.mapSession //TODO:发送给对应的socket.
+
 	return err
+}
+
+func (self *MyChat) tryGetDataFromChan() (spmr []*PushMessageRaw, spm []*PushMessage, scmr []*ChatMessageRaw, scm []*ChatMessage) {
+	var ok bool = true
+	spmr = make([]*PushMessageRaw, 0)
+	var pmr *PushMessageRaw
+	spm = make([]*PushMessage, 0)
+	var pm *PushMessage
+	scmr = make([]*ChatMessageRaw, 0)
+	var cmr *ChatMessageRaw
+	scm = make([]*ChatMessage, 0)
+	var cm *ChatMessage
+
+	for ok {
+		select {
+		case pmr, ok = <-self.chanPmr:
+		default:
+		}
+		if ok {
+			spmr = append(spmr, pmr)
+		}
+	}
+
+	for ok {
+		select {
+		case pm, ok = <-self.chanPm:
+		default:
+		}
+		if ok {
+			spm = append(spm, pm)
+		}
+	}
+
+	for ok {
+		select {
+		case cmr, ok = <-self.chanCmr:
+		default:
+		}
+		if ok {
+			scmr = append(scmr, cmr)
+		}
+	}
+
+	for ok {
+		select {
+		case cm, ok = <-self.chanCm:
+		default:
+		}
+		if ok {
+			scm = append(scm, cm)
+		}
+	}
+
+	return
+}
+
+func (self *MyChat) innerIncrIdxWithoutLock(tablename string) int64 {
+	//(非)[线程安全]
+	idx, ok := self.mapRowIdx[tablename]
+	if !ok {
+		panic("逻辑错误")
+	}
+	idx += 1
+	self.mapRowIdx[tablename] = idx
+	return idx
+}
+
+func calcMyTablename(engine *xorm.Engine, bean interface{}) string {
+	//(无所谓)[线程安全]
+	//我参考的代码 func (engine *Engine) tbName(v reflect.Value) string {
+	var v reflect.Value = reflect.Indirect(reflect.ValueOf(bean))
+	var tbName string = engine.TableMapper.Obj2Table(reflect.Indirect(v).Type().Name())
+	return tbName
+}
+
+func (self *MyChat) handlePushChatChan() {
+	var err error = nil
+	var ok bool = true
+	var tablenamePmr string = calcMyTablename(self.engine, PushMessageRaw{})
+	var tablenamePm string = calcMyTablename(self.engine, PushMessage{})
+	var tablenameCmr string = calcMyTablename(self.engine, ChatMessageRaw{})
+	var tablenamecm string = calcMyTablename(self.engine, ChatMessage{})
+	var pmr *PushMessageRaw
+	var pm *PushMessage
+	var cmr *ChatMessageRaw
+	var cm *ChatMessage
+
+	for {
+		pmr = nil
+		pm = nil
+		cmr = nil
+		cm = nil
+
+		select {
+		case pmr, ok = <-self.chanPmr:
+		case pm, ok = <-self.chanPm:
+		case cmr, ok = <-self.chanCmr:
+		case cm, ok = <-self.chanCm:
+		}
+
+		if !ok {
+			panic(fmt.Sprintf("逻辑错误:%v", ok))
+		}
+
+		spmr, spm, scmr, scm := self.tryGetDataFromChan()
+		if pmr != nil {
+			spmr = append(spmr, pmr)
+		}
+		if pm != nil {
+			spm = append(spm, pm)
+		}
+		if cmr != nil {
+			scmr = append(scmr, cmr)
+		}
+		if cm != nil {
+			scm = append(scm, cm)
+		}
+
+		tablenames := make(map[string]bool)
+		for _, cm = range scm {
+			tablenames[cm.MyTn] = true
+		}
+		if len(scmr) > 0 {
+			tablenames[tablenameCmr] = true
+		}
+		if len(spmr) > 0 {
+			tablenames[tablenamePmr] = true
+		}
+		if len(spm) > 0 {
+			tablenames[tablenamePm] = true
+		}
+
+		if err = self.Insert(spmr); err != nil {
+			log.Println(err)
+		}
+		if err = self.Insert(pmr); err != nil {
+			log.Println(err)
+		}
+		if err = self.Insert(cmr); err != nil {
+			log.Println(err)
+		}
+		if err = self.Insert(cm); err != nil {
+			log.Println(err)
+		}
+
+		//TODO:对于每一个session,发送tablenames的所有key.
+	}
+
+	var pushDataRaw []*PushMessageRaw = make([]*PushMessageRaw, 0)
+	var pushData []*PushMessage = make([]*PushMessage, 0)
+	var chatDataRaw []*ChatMessageRaw = make([]*ChatMessageRaw, 0)
+	var chatData []*ChatMessage = make([]*ChatMessage, 0)
+
+	select {}
+
 }
 
 func (self *MyChat) HandlePushMessage(uId *int64, uAlias *string) error {
@@ -458,7 +633,7 @@ func (self *MyChat) HandlePushMessage(uId *int64, uAlias *string) error {
 			break
 		}
 
-		var messageSlice []NoticeMessage = nil
+		var messageSlice []PushMessage = nil
 		if err = self.engine.Where("id>?", ud.NoticePos).Find(&messageSlice); err != nil {
 			break
 		}
@@ -467,7 +642,7 @@ func (self *MyChat) HandlePushMessage(uId *int64, uAlias *string) error {
 			break
 		}
 
-		var message NoticeMessage
+		var message PushMessage
 		for _, message = range messageSlice {
 			//userId=0,表示向所有的user发送数据,groupId=0,表示向所有的group发送数据.
 			if myInSlice(0, message.RecverId) || (myInSlice(0, message.GroupId) && len(ud.GroupPos) > 0) ||
@@ -487,8 +662,8 @@ func (self *MyChat) HandlePushMessage(uId *int64, uAlias *string) error {
 	return err
 }
 
-func toPushMessage(dataRaw *NoticeMessageRaw) *NoticeMessage {
-	data := new(NoticeMessage)
+func toPushMessage(dataRaw *PushMessageRaw) *PushMessage {
+	data := new(PushMessage)
 	data.IdRaw = dataRaw.Id
 	data.SenderId = dataRaw.SenderId
 	data.SenderAlias = dataRaw.SenderAlias
@@ -547,8 +722,8 @@ func myExistKeyInSlice(dataMap map[int64]int64, dataSlice []int64) bool {
 }
 
 func (self *MyChat) calcChatTablenameWithLock() (tablenames []string, err error) {
-	self.rwMutex.RLock()
-	defer self.rwMutex.RUnlock()
+	self.rwMutex.Lock()
+	defer self.rwMutex.Unlock()
 
 	tablenames = make([]string, 0)
 	var tName string
@@ -601,8 +776,8 @@ func (self *MyChat) createTablesAndSync2() error {
 		beans = append(beans, new(KeyValue))
 		beans = append(beans, new(UserData))
 		beans = append(beans, new(GroupData))
-		beans = append(beans, new(NoticeMessageRaw))
-		beans = append(beans, new(NoticeMessage))
+		beans = append(beans, new(PushMessageRaw))
+		beans = append(beans, new(PushMessage))
 		beans = append(beans, new(ChatMessageRaw))
 		for _, tablename := range tablenameSlice {
 			cm := new(ChatMessage)
@@ -670,8 +845,8 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 }
 
 func (self *MyChat) saveDataToDbWithLock() error {
-	self.rwMutex.RLock()
-	defer self.rwMutex.RUnlock()
+	self.rwMutex.Lock()
+	defer self.rwMutex.Unlock()
 	return self.saveDataToDbWithoutLock()
 }
 
@@ -849,7 +1024,7 @@ func (self *MyChat) findAndMergeGroupWithoutLock(gId []int64, gAlias []string) (
 	return
 }
 
-func (self *MyChat) queryLastNoticeMessageRaw() (data NoticeMessageRaw, err error) {
+func (self *MyChat) queryLastPushMessageRaw() (data PushMessageRaw, err error) {
 	var isOk bool = false
 	// SELECT * FROM tablename ORDER BY id DESC LIMIT 1
 	isOk, err = self.engine.Desc("id").Get(&data)
@@ -859,7 +1034,7 @@ func (self *MyChat) queryLastNoticeMessageRaw() (data NoticeMessageRaw, err erro
 	return
 }
 
-func (self *MyChat) queryLastNoticeMessage() (data NoticeMessage, err error) {
+func (self *MyChat) queryLastPushMessage() (data PushMessage, err error) {
 	var isOk bool = false
 	// SELECT * FROM tablename ORDER BY id DESC LIMIT 1
 	isOk, err = self.engine.Desc("id").Get(&data)
@@ -869,12 +1044,12 @@ func (self *MyChat) queryLastNoticeMessage() (data NoticeMessage, err error) {
 	return
 }
 
-func (self *MyChat) queryLastChatMessageRaw(tablename string) (data ChatMessageRaw, err error) {
+func (self *MyChat) queryLastChatMessageRaw() (data ChatMessageRaw, err error) {
 	var isOk bool = false
 	// SELECT * FROM tablename ORDER BY id DESC LIMIT 1
-	isOk, err = self.engine.Table(tablename).Desc("id").Get(&data)
+	isOk, err = self.engine.Desc("id").Get(&data)
 	if (isOk && err != nil) || (!isOk && err == nil) {
-		panic(fmt.Sprintf("xorm的逻辑异常,tablename=%v,isOk=%v,err=%v", tablename, isOk, err))
+		panic(fmt.Sprintf("xorm的逻辑异常,isOk=%v,err=%v", isOk, err))
 	}
 	return
 }
@@ -891,6 +1066,14 @@ func (self *MyChat) queryLastChatMessage(tablename string) (data ChatMessage, er
 
 func (self *MyChat) InsertOne(bean interface{}) error {
 	affected, err := self.engine.InsertOne(bean)
+	if (affected <= 0 && err == nil) || (affected > 0 && err != nil) {
+		panic(fmt.Sprintf("xorm的逻辑异常,InsertOne,affected=%v,err=%v", affected, err))
+	}
+	return err
+}
+
+func (self *MyChat) Insert(beans ...interface{}) error {
+	affected, err := self.engine.Insert(beans...)
 	if (affected <= 0 && err == nil) || (affected > 0 && err != nil) {
 		panic(fmt.Sprintf("xorm的逻辑异常,InsertOne,affected=%v,err=%v", affected, err))
 	}

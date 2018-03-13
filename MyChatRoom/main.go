@@ -27,10 +27,10 @@ func main() {
 	for i := 0; i < 30; i++ {
 		time.Sleep(time.Second)
 
-		nmr := NoticeMessageRaw{}
+		nmr := PushMessageRaw{}
 		nmr.RecverId = []int64{0}
 		nmr.Message = fmt.Sprintf("msg_%v", i)
-		if err = myChat.RecvNoticeMessageRaw(nmr); err != nil {
+		if err = myChat.RecvPushMessageRaw(nmr); err != nil {
 			log.Println(err)
 		}
 

@@ -43,7 +43,7 @@ type GroupData struct {
 }
 
 //原始通知消息(服务器刚刚接收到的最原始消息)
-type NoticeMessageRaw struct {
+type PushMessageRaw struct {
 	Id          int64     `xorm:"notnull pk autoincr"`
 	Dttm        time.Time `xorm:"updated"`
 	SenderId    int64     //发送者的ID号
@@ -57,7 +57,7 @@ type NoticeMessageRaw struct {
 }
 
 //整理后的通知消息(最终呈现给用户的通知消息)
-type NoticeMessage struct {
+type PushMessage struct {
 	Id          int64     `xorm:"notnull pk autoincr"`
 	Dttm        time.Time `xorm:"updated"`
 	IdRaw       int64     //此行记录对应的原始ID号
