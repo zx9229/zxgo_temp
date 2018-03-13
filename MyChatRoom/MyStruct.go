@@ -21,15 +21,17 @@ type KeyValue struct {
 }
 
 type UserData struct {
-	Id         int64           `xorm:"notnull pk autoincr"` //类似QQ的唯一ID(不可修改,全局唯一)
-	Alias      string          `xorm:"notnull unique"`      //别名(可以修改,全局唯一)
-	Password   string          //密码
-	GroupPos   map[int64]int64 //组里的消息,接收到哪个位置了.
-	FriendPos  map[int64]int64 //好友的消息,接收到哪个位置了.
-	NoticePos  int64           //  通知消息,接收到哪个位置了.
-	CreateTime time.Time       `xorm:"created"` //创建时间
-	UpdateTime time.Time       `xorm:"updated"` //更新时间
-	Memo       string          //备注(预留字段)
+	Id            int64           `xorm:"notnull pk autoincr"` //类似QQ的唯一ID(不可修改,全局唯一)
+	Alias         string          `xorm:"notnull unique"`      //别名(可以修改,全局唯一)
+	Password      string          //密码
+	GroupPos      map[int64]int64 //组里的消息,接收到哪个位置了.
+	FriendPos     map[int64]int64 //好友的消息,接收到哪个位置了.
+	EnableToUser  bool
+	EnableToGroup bool
+	NoticePos     int64     //  通知消息,接收到哪个位置了.
+	CreateTime    time.Time `xorm:"created"` //创建时间
+	UpdateTime    time.Time `xorm:"updated"` //更新时间
+	Memo          string    //备注(预留字段)
 }
 
 type GroupData struct {
