@@ -5,9 +5,42 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/go-xorm/core"
+	"github.com/go-xorm/xorm"
 )
 
 func main() {
+	var err error = nil
+	var engine *xorm.Engine = nil
+	driverName := "sqlite3"
+	dataSourceName := "test.db"
+	if engine, err = xorm.NewEngine(driverName, dataSourceName); err != nil {
+		log.Println(err)
+		return
+	}
+	engine.SetMapper(core.GonicMapper{})
+	if err = engine.CreateTables(UserData{}, GroupData{}); err != nil {
+		log.Println(err)
+		return
+	}
+	if err = engine.Sync2(UserData{}, GroupData{}); err != nil {
+		log.Println(err)
+		return
+	}
+
+	usergroup := NewUserGroup()
+	if err = usergroup.LoadFromDb(engine); err != nil {
+		log.Println(err)
+		return
+	}
+	if err = usergroup.AddUserWithLock(engine, "a1", "pwd"); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func main_bak() {
 	var err error = nil
 
 	driverName := "sqlite3"

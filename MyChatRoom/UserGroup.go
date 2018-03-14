@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	errParamsValue = errors.New("Params value error") //参数的值有问题.
-	errKeyNotFound = errors.New("Not found key")      //在map里找不到对应的key.
+	errParamsValue  = errors.New("Params value error") //参数的值有问题.
+	errKeyNotFound  = errors.New("Not found key")      //在map里找不到对应的key.
+	errExistsAlias  = errors.New("Alias exists")       //用户/组别名已经存在.
+	errDataConflict = errors.New("Data conflict")      //数据出错/数据不一致/数据冲突.
 )
 
 type UserGroup struct {
@@ -25,15 +27,16 @@ type UserGroup struct {
 
 func NewUserGroup() *UserGroup {
 	newData := new(UserGroup)
-
+	//
 	newData.mtxUser = new(sync.Mutex)
 	newData.mapUserI = make(map[int64]UserData)
 	newData.mapUserA = make(map[string]UserData)
+	newData.mtxGroup = new(sync.Mutex)
 	newData.mapGroupI = make(map[int64]GroupData)
 	newData.mapGroupA = make(map[string]GroupData)
 	newData.mtxGU = new(sync.Mutex)
 	newData.mapGU = make(map[int64]map[int64]bool)
-
+	//
 	return newData
 }
 
@@ -56,9 +59,9 @@ func (self *UserGroup) FindUserWithLock(uId *int64, uAlias *string) (data UserDa
 	return
 }
 
-// 如果找不到,就立即退出.
-func (self *UserGroup) findAndMergeUser(suI []int64, suA []string) (nuI []int64, nuA []string, err error) {
-	//[线程安全]
+// 入参指定了那么多用户, 只要有一个用户找不到, 就说明入参有问题, 就返回error并结束函数调用.
+func (self *UserGroup) FindUserAndMergeWithLock(suI []int64, suA []string) (nuI []int64, nuA []string, err error) {
+	//[线程安全](调用了加锁的函数)
 	tmpData := make(map[int64]UserData)
 	var ud UserData
 	if suI != nil {
@@ -91,6 +94,7 @@ func (self *UserGroup) findAndMergeUser(suI []int64, suA []string) (nuI []int64,
 }
 
 func (self *UserGroup) FindGroupWithLock(gId *int64, gAlias *string) (data GroupData, err error) {
+	//[线程安全]
 	self.mtxGroup.Lock()
 	defer self.mtxGroup.Unlock()
 	var ok bool
@@ -108,7 +112,9 @@ func (self *UserGroup) FindGroupWithLock(gId *int64, gAlias *string) (data Group
 	return
 }
 
-func (self *UserGroup) FindAndMergeGroup(sgI []int64, sgA []string) (ngI []int64, ngA []string, err error) {
+// 入参指定了那么多组, 只要有一个组找不到, 就说明入参有问题, 就返回error并结束函数调用.
+func (self *UserGroup) FindGroupAndMergeWithLock(sgI []int64, sgA []string) (ngI []int64, ngA []string, err error) {
+	//[线程安全](调用了加锁的函数)
 	tmpData := make(map[int64]GroupData)
 	var gd GroupData
 	if sgI != nil {
@@ -140,7 +146,73 @@ func (self *UserGroup) FindAndMergeGroup(sgI []int64, sgA []string) (ngI []int64
 	return
 }
 
-func (self *UserGroup) saveToDbAndReload(engine *xorm.Engine, mapUserI map[int64]UserData, mapGroupI map[int64]GroupData) error {
+func (self *UserGroup) AddUserWithLock(engine *xorm.Engine, alias string, password string) error {
+	self.mtxUser.Lock()
+	defer self.mtxUser.Unlock()
+
+	var err error
+	if !checkDataAndOk2(self.mapUserI, self.mapGroupI, self.mapGU) {
+		err = errDataConflict
+		return err
+	}
+
+	if _, ok := self.mapUserA[alias]; ok {
+		err = errExistsAlias
+		return err
+	}
+
+	tmpUserData := new(UserData)
+	tmpUserData.Alias = alias
+	tmpUserData.Password = password
+
+	session := engine.NewSession()
+	defer session.Close()
+
+	if err = session.Begin(); err != nil {
+		return err
+	}
+	if _, err = session.InsertOne(tmpUserData); err != nil {
+		if err2 := session.Rollback(); err2 != nil {
+			panic(err2)
+		}
+		return err
+	}
+	var sliceUserData []UserData
+	if err = session.Find(&sliceUserData); err != nil {
+		if err2 := session.Rollback(); err2 != nil {
+			panic(err2)
+		}
+		return err
+	}
+	muA := s2mUserDataA(sliceUserData)
+	if _, ok := muA[alias]; !ok {
+		err = errors.New("逻辑异常")
+		if err2 := session.Rollback(); err2 != nil {
+			panic(err2)
+		}
+		return err
+	}
+	muI := s2mUserDataI(sliceUserData)
+	if !checkDataAndOk2(muI, self.mapGroupI, self.mapGU) {
+		err = errDataConflict
+		if err2 := session.Rollback(); err2 != nil {
+			panic(err2)
+		}
+		return err
+	}
+	if err = session.Commit(); err != nil {
+		if err2 := session.Rollback(); err2 != nil {
+			panic(err2)
+		}
+		return err
+	}
+	self.mapUserI = s2mUserDataI(sliceUserData)
+	self.mapUserA = s2mUserDataA(sliceUserData)
+
+	return err
+}
+
+func (self *UserGroup) saveToDbAndReload(engine *xorm.Engine) error {
 	self.mtxUser.Lock()
 	defer self.mtxUser.Unlock()
 	self.mtxGroup.Lock()
@@ -149,20 +221,25 @@ func (self *UserGroup) saveToDbAndReload(engine *xorm.Engine, mapUserI map[int64
 	defer self.mtxGU.Unlock()
 
 	var err error
+	if !checkDataAndOk2(self.mapUserI, self.mapGroupI, self.mapGU) {
+		err = errors.New("数据错乱")
+		return err
+	}
+
 	session := engine.NewSession()
 	defer session.Close()
 
 	if err = session.Begin(); err != nil {
 		return err
 	}
-	oldSliceUser := m2sUserDataI(mapUserI)
+	oldSliceUser := m2sUserDataI(self.mapUserI)
 	if _, err = session.Insert(oldSliceUser); err != nil {
 		if err2 := session.Rollback(); err2 != nil {
 			panic(err2)
 		}
 		return err
 	}
-	oldSliceGroup := m2sGroupDataI(mapGroupI)
+	oldSliceGroup := m2sGroupDataI(self.mapGroupI)
 	if _, err = session.Insert(oldSliceGroup); err != nil {
 		if err2 := session.Rollback(); err2 != nil {
 			panic(err2)
@@ -199,6 +276,13 @@ func (self *UserGroup) saveToDbAndReload(engine *xorm.Engine, mapUserI map[int64
 		}
 		return err
 	}
+
+	self.mapUserI = s2mUserDataI(newSliceUser)
+	self.mapUserA = s2mUserDataA(newSliceUser)
+	self.mapGroupI = s2mGroupDataI(newSliceGroup)
+	self.mapGroupA = s2mGroupDataA(newSliceGroup)
+	self.mapGU = toGU(self.mapUserI, self.mapGroupI)
+
 	return err
 }
 
@@ -237,10 +321,10 @@ func (self *UserGroup) LoadFromDb(engine *xorm.Engine) error {
 }
 
 func checkDataAndOk(mapUser map[int64]UserData, mapGroup map[int64]GroupData) bool {
-	var ok bool
+	var ok bool = true
 	for _, gd := range mapGroup {
-		if superUd, ok2 := mapUser[gd.SuperId]; !ok2 {
-			ok = ok2
+		var superUd UserData
+		if superUd, ok = mapUser[gd.SuperId]; !ok {
 			return ok
 		} else {
 			if _, ok = superUd.GroupPos[gd.Id]; !ok {
@@ -248,8 +332,8 @@ func checkDataAndOk(mapUser map[int64]UserData, mapGroup map[int64]GroupData) bo
 			}
 		}
 		for _, aId := range gd.AdminId {
-			if adminUd, ok2 := mapUser[aId]; !ok2 {
-				ok = ok2
+			var adminUd UserData
+			if adminUd, ok = mapUser[aId]; !ok {
 				return ok
 			} else {
 				if _, ok = adminUd.GroupPos[gd.Id]; !ok {
