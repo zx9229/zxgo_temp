@@ -545,7 +545,7 @@ func (self *MyChat) handlePushChatChan() {
 	var tablenamePmr string = calcMyTablename(self.engine, PushMessageRaw{})
 	var tablenamePm string = calcMyTablename(self.engine, PushMessage{})
 	var tablenameCmr string = calcMyTablename(self.engine, ChatMessageRaw{})
-	var tablenamecm string = calcMyTablename(self.engine, ChatMessage{})
+	//var tablenamecm string = calcMyTablename(self.engine, ChatMessage{})
 	var pmr *PushMessageRaw
 	var pm *PushMessage
 	var cmr *ChatMessageRaw
@@ -611,13 +611,6 @@ func (self *MyChat) handlePushChatChan() {
 
 		//TODO:对于每一个session,发送tablenames的所有key.
 	}
-
-	var pushDataRaw []*PushMessageRaw = make([]*PushMessageRaw, 0)
-	var pushData []*PushMessage = make([]*PushMessage, 0)
-	var chatDataRaw []*ChatMessageRaw = make([]*ChatMessageRaw, 0)
-	var chatData []*ChatMessage = make([]*ChatMessage, 0)
-
-	select {}
 
 }
 
