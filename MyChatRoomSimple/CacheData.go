@@ -1,0 +1,211 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+func calcTableNameNotice() string {
+	return "t_notice"
+}
+
+func calcTableNameGroup(groupId int64) string {
+	return fmt.Sprintf("t_g_%v", groupId)
+}
+
+func calcTableNameFriend(userId1 int64, userId2 int64) string {
+	var minVal, maxVal int64
+	if userId1 < userId2 {
+		minVal = userId1
+		maxVal = userId2
+	} else {
+		minVal = userId2
+		maxVal = userId1
+	}
+	return fmt.Sprintf("t_f_%v_%v", minVal, maxVal)
+}
+
+func myInSlice(dataItem int64, dataSlice []int64) bool {
+	if dataSlice != nil {
+		for _, element := range dataSlice {
+			if dataItem == element {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+type CacheData struct { //内存中的缓存数据.
+	allUser   map[int64]*UserData  //所有的用户数据.
+	allGroup  map[int64]*GroupData //所有的组数据.
+	mapRowIdx map[string]int64     //以Id递增的表,缓存了它的序号.
+}
+
+func NewCacheData() *CacheData {
+	newData := &CacheData{}
+	newData.allUser = make(map[int64]*UserData)
+	newData.allGroup = make(map[int64]*GroupData)
+	newData.mapRowIdx = make(map[string]int64)
+	return newData
+}
+
+func (self *CacheData) checkFriends(uId1 int64, uId2 int64) error {
+	var err error
+	var ok bool = false
+	var ud1 *UserData = nil
+	var ud2 *UserData = nil
+	var curLastRowIdx int64 = -1     //数据库表中,当前时刻,最新的那一行,的序号.
+	var curU1RecvPosition int64 = -1 //数据库表中,当前时刻,用户已经接收了哪个序号的数据.
+	var curU2RecvPosition int64 = -1 //数据库表中,当前时刻,用户已经接收了哪个序号的数据.
+
+	if ud1, ok = self.allUser[uId1]; !ok {
+		err = errors.New(fmt.Sprintf("找不到id=%v的用户", uId1))
+		return err
+	}
+	if ud2, ok = self.allUser[uId2]; !ok {
+		err = errors.New(fmt.Sprintf("找不到id=%v的用户", uId2))
+		return err
+	}
+	curTablename := calcTableNameFriend(uId1, uId2)
+	if curLastRowIdx, ok = self.mapRowIdx[curTablename]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", curTablename))
+		return err
+	}
+	if curU1RecvPosition, ok = ud1.FriendPos[uId2]; !ok {
+		err = errors.New(fmt.Sprintf("userId=%v里面找不到userId=%v的position", uId1, uId2))
+		return err
+	}
+	if curU2RecvPosition, ok = ud2.FriendPos[uId1]; !ok {
+		err = errors.New(fmt.Sprintf("userId=%v里面找不到userId=%v的position", uId2, uId1))
+		return err
+	}
+	if curLastRowIdx < 0 || curU1RecvPosition < 0 || curU2RecvPosition < 0 || curLastRowIdx < curU1RecvPosition || curLastRowIdx < curU2RecvPosition {
+		err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条,userId=%v接收到了第%v条", curTablename, curLastRowIdx, uId1, curU1RecvPosition, uId2, curU2RecvPosition))
+		return err
+	}
+	err = nil
+	return err
+}
+
+func (self *CacheData) checkGroup(gId int64) error {
+	var err error
+	var ok bool
+	var gd *GroupData = nil
+
+	if gd, ok = self.allGroup[gId]; !ok {
+		err = errors.New(fmt.Sprintf("找不到groupId=%v的组", gId))
+		return err
+	}
+
+	allMembers := make(map[int64]bool)
+	allMembers[gd.SuperId] = true
+	for _, aId := range gd.AdminId {
+		allMembers[aId] = true
+	}
+	for _, mId := range gd.OtherMemId {
+		allMembers[mId] = true
+	}
+
+	if len(allMembers) != (len(gd.AdminId) + len(gd.OtherMemId) + 1) {
+		err = errors.New(fmt.Sprintf("数据异常:groupId=%v的成员数据有重复", gId))
+		return err
+	}
+
+	for uId, _ := range allMembers {
+		if err = self.checkGroupMember(uId, gId); err != nil {
+			return err
+		}
+	}
+
+	err = nil
+	return err
+}
+
+func (self *CacheData) checkGroupMember(uId int64, gId int64) error {
+	var err error
+	var ok bool
+	var ud *UserData = nil
+	var gd *GroupData = nil
+	var curLastRowIdx int64 = -1   //数据库表中,当前时刻,最新的那一行,的序号.
+	var curRecvPosition int64 = -1 //数据库表中,当前时刻,用户已经接收了哪个序号的数据.
+
+	if ud, ok = self.allUser[uId]; !ok {
+		err = errors.New(fmt.Sprintf("找不到userId=%v的用户", uId))
+		return err
+	}
+	if gd, ok = self.allGroup[gId]; !ok {
+		err = errors.New(fmt.Sprintf("找不到groupId=%v的组", gId))
+		return err
+	}
+	curTablename := calcTableNameGroup(gId)
+	if curLastRowIdx, ok = self.mapRowIdx[curTablename]; !ok {
+		err = errors.New(fmt.Sprintf("找不到名为%v的数据库表", curTablename))
+		return err
+	}
+	if uId != gd.SuperId && !myInSlice(uId, gd.AdminId) && !myInSlice(uId, gd.OtherMemId) {
+		err = errors.New(fmt.Sprintf("userId=%v的用户不在groupId=%v里面", uId, gId))
+		return err
+	}
+	if curRecvPosition, ok = ud.GroupPos[gId]; !ok {
+		err = errors.New(fmt.Sprintf("userId=%v里面找不到groupId=%v的position", uId, gId))
+		return err
+	}
+	if curLastRowIdx < 0 || curRecvPosition < 0 || curLastRowIdx < curRecvPosition {
+		err = errors.New(fmt.Sprintf("数据异常:groupId=%v有%v条数据,userId=%v接收到了第%v条", gId, curLastRowIdx, uId, curRecvPosition))
+		return err
+	}
+	err = nil
+	return err
+}
+
+func (self *CacheData) check() error {
+	var err error
+
+	var curLastRowIndexNotice int64
+	var ok bool
+	noticeTablename := calcTableNameNotice()
+	if curLastRowIndexNotice, ok = self.mapRowIdx[noticeTablename]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", noticeTablename))
+		return err
+	}
+
+	for udKey, ud := range self.allUser {
+		if udKey != ud.Id {
+			err = errors.New(fmt.Sprintf("数据异常,udKey=%v,udId=%v", udKey, ud.Id))
+			return err
+		}
+		for gId, _ := range ud.GroupPos {
+			if err = self.checkGroupMember(udKey, gId); err != nil {
+				return err
+			}
+		}
+		for fId, _ := range ud.FriendPos {
+			if err = self.checkFriends(ud.Id, fId); err != nil {
+				return err
+			}
+		}
+		if ud.NoticePos < 0 || curLastRowIndexNotice < 0 || curLastRowIndexNotice < ud.NoticePos {
+			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", noticeTablename, curLastRowIndexNotice, ud.Id, ud.NoticePos))
+			return err
+		}
+	}
+
+	for gdKey, gd := range self.allGroup {
+		if gdKey != gd.Id {
+			err = errors.New(fmt.Sprintf("数据异常,gdKey=%v,gdId=%v", gdKey, gd.Id))
+			return err
+		}
+		if err = self.checkGroup(gd.Id); err != nil {
+			return err
+		}
+	}
+	for tbName, rowIdx := range self.mapRowIdx {
+		if len(tbName) <= 0 || rowIdx < 0 {
+			err = errors.New(fmt.Sprintf("数据异常,tbName=%v,rowIdx=%v", tbName, rowIdx))
+			return err
+		}
+	}
+	err = nil
+	return err
+}
