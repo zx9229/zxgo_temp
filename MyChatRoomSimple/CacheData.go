@@ -15,10 +15,6 @@ func calcTablenameXorm(engine *xorm.Engine, bean interface{}) string {
 	return tbName
 }
 
-func calcTableNameNotice() string {
-	return "t_notice"
-}
-
 func calcTableNameGroup(groupId int64) string {
 	return fmt.Sprintf("t_g_%v", groupId)
 }
@@ -50,24 +46,22 @@ type CacheData struct { //内存中的缓存数据.
 	allUser          map[int64]*UserData  //所有的用户数据.
 	allGroup         map[int64]*GroupData //所有的组数据.
 	mapRowIdx        map[string]int64     //以Id递增的表,缓存了它的序号.
-	TbPushMessageRaw string               //PushMessageRaw的表名.
-	TbPushMessage    string               //PushMessage的表名.
+	tnPushMessageRaw string               //tableName of PushMessageRaw.
+	tnPushMessage    string               //talbeName of PushMessage.
 }
 
-func NewCacheData() *CacheData {
-	newData := &CacheData{}
+func NewCacheData(engine *xorm.Engine) *CacheData {
+	newData := new(CacheData)
+
 	newData.allUser = make(map[int64]*UserData)
 	newData.allGroup = make(map[int64]*GroupData)
 	newData.mapRowIdx = make(map[string]int64)
-	return newData
-}
+	newData.tnPushMessageRaw = calcTablenameXorm(engine, new(PushMessageRaw))
+	newData.tnPushMessage = calcTablenameXorm(engine, new(PushMessage))
+	newData.mapRowIdx[newData.tnPushMessageRaw] = 0
+	newData.mapRowIdx[newData.tnPushMessage] = 0
 
-func (self *CacheData) fillSomeData(someTablename []string) {
-	for _, tbName := range someTablename {
-		if _, ok := self.mapRowIdx[tbName]; !ok {
-			self.mapRowIdx[tbName] = 0
-		}
-	}
+	return newData
 }
 
 func (self *CacheData) checkFriends(uId1 int64, uId2 int64) error {
@@ -184,8 +178,8 @@ func (self *CacheData) check() error {
 
 	var curLastRowIndexNotice int64
 	var ok bool
-	if curLastRowIndexNotice, ok = self.mapRowIdx[self.TbPushMessage]; !ok {
-		err = errors.New(fmt.Sprintf("找不到%v的数据库表", self.TbPushMessage))
+	if curLastRowIndexNotice, ok = self.mapRowIdx[self.tnPushMessage]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", self.tnPushMessage))
 		return err
 	}
 
@@ -214,7 +208,7 @@ func (self *CacheData) check() error {
 			}
 		}
 		if ud.NoticePos < 0 || curLastRowIndexNotice < 0 || curLastRowIndexNotice < ud.NoticePos {
-			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", self.TbPushMessage, curLastRowIndexNotice, ud.Id, ud.NoticePos))
+			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", self.tnPushMessage, curLastRowIndexNotice, ud.Id, ud.NoticePos))
 			return err
 		}
 	}

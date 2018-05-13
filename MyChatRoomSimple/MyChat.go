@@ -32,7 +32,7 @@ func NewMyChat() *MyChat {
 
 	newData.engine = nil
 	newData.rwMutex = new(sync.Mutex)
-	newData.cache = NewCacheData()
+	newData.cache = nil
 	newData.allKV = make(map[string]KeyValue)
 	newData.chanPmr = make(chan *PushMessageRaw, 1024)
 	newData.chanPm = make(chan *PushMessage, 1024)
@@ -77,20 +77,10 @@ func (self *MyChat) Init(driverName string, dataSourceName string, locationName 
 			break
 		}
 
-		if true {
-			someTablename := make([]string, 0)
-			someTablename = append(someTablename, calcTablenameXorm(self.engine, new(PushMessageRaw)))
-			someTablename = append(someTablename, calcTablenameXorm(self.engine, new(PushMessage)))
-			someTablename = append(someTablename, calcTablenameXorm(self.engine, new(ChatMessageRaw)))
-			self.cache.fillSomeData(someTablename)
-		}
-
 		if err = self.loadDataFromDbWithLock(); err != nil {
 			break
 		}
 
-		self.cache.TbPushMessageRaw = calcTablenameXorm(self.engine, &PushMessageRaw{})
-		self.cache.TbPushMessage = calcTablenameXorm(self.engine, &PushMessage{})
 	}
 
 	return err
@@ -149,10 +139,15 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 			self.allKV[kv.Key] = kv
 		}
 
-		if kvData, ok := self.allKV[reflect.TypeOf(&CacheData{}).Name()]; ok {
-			if err = json.Unmarshal([]byte(kvData.Value), self.cache); err != nil {
+		var tmpCache *CacheData = new(CacheData) //此时(self.cache == nil)是true.
+		if kvData, ok := self.allKV[reflect.TypeOf(tmpCache).Name()]; ok {
+			if err = json.Unmarshal([]byte(kvData.Value), tmpCache); err != nil {
 				break
+			} else {
+				self.cache = tmpCache
 			}
+		} else {
+			self.cache = NewCacheData(self.engine)
 		}
 	}
 
