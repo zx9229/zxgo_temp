@@ -3,7 +3,17 @@ package main
 import (
 	"errors"
 	"fmt"
+	"reflect"
+
+	"github.com/go-xorm/xorm"
 )
+
+func calcTablenameXorm(engine *xorm.Engine, bean interface{}) string {
+	//我参考的代码 func (engine *Engine) tbName(v reflect.Value) string {
+	var v reflect.Value = reflect.Indirect(reflect.ValueOf(bean))
+	tbName := engine.TableMapper.Obj2Table(reflect.Indirect(v).Type().Name())
+	return tbName
+}
 
 func calcTableNameNotice() string {
 	return "t_notice"
@@ -37,9 +47,11 @@ func myInSlice(dataItem int64, dataSlice []int64) bool {
 }
 
 type CacheData struct { //内存中的缓存数据.
-	allUser   map[int64]*UserData  //所有的用户数据.
-	allGroup  map[int64]*GroupData //所有的组数据.
-	mapRowIdx map[string]int64     //以Id递增的表,缓存了它的序号.
+	allUser          map[int64]*UserData  //所有的用户数据.
+	allGroup         map[int64]*GroupData //所有的组数据.
+	mapRowIdx        map[string]int64     //以Id递增的表,缓存了它的序号.
+	TbPushMessageRaw string               //PushMessageRaw的表名.
+	TbPushMessage    string               //PushMessage的表名.
 }
 
 func NewCacheData() *CacheData {
@@ -48,6 +60,14 @@ func NewCacheData() *CacheData {
 	newData.allGroup = make(map[int64]*GroupData)
 	newData.mapRowIdx = make(map[string]int64)
 	return newData
+}
+
+func (self *CacheData) fillSomeData(someTablename []string) {
+	for _, tbName := range someTablename {
+		if _, ok := self.mapRowIdx[tbName]; !ok {
+			self.mapRowIdx[tbName] = 0
+		}
+	}
 }
 
 func (self *CacheData) checkFriends(uId1 int64, uId2 int64) error {
@@ -164,9 +184,17 @@ func (self *CacheData) check() error {
 
 	var curLastRowIndexNotice int64
 	var ok bool
-	noticeTablename := calcTableNameNotice()
-	if curLastRowIndexNotice, ok = self.mapRowIdx[noticeTablename]; !ok {
-		err = errors.New(fmt.Sprintf("找不到%v的数据库表", noticeTablename))
+	if curLastRowIndexNotice, ok = self.mapRowIdx[self.TbPushMessage]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", self.TbPushMessage))
+		return err
+	}
+
+	allUserAlias := make(map[string]bool)
+	for _, ud := range self.allUser {
+		allUserAlias[ud.Alias] = true
+	}
+	if len(allUserAlias) != len(self.allUser) {
+		err = errors.New(fmt.Sprintf("数据异常:用户的别名有重复"))
 		return err
 	}
 
@@ -186,9 +214,18 @@ func (self *CacheData) check() error {
 			}
 		}
 		if ud.NoticePos < 0 || curLastRowIndexNotice < 0 || curLastRowIndexNotice < ud.NoticePos {
-			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", noticeTablename, curLastRowIndexNotice, ud.Id, ud.NoticePos))
+			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", self.TbPushMessage, curLastRowIndexNotice, ud.Id, ud.NoticePos))
 			return err
 		}
+	}
+
+	allGroupAlias := make(map[string]bool)
+	for _, gd := range self.allGroup {
+		allGroupAlias[gd.Alias] = true
+	}
+	if len(allGroupAlias) != len(self.allGroup) {
+		err = errors.New(fmt.Sprintf("数据异常:组的别名有重复"))
+		return err
 	}
 
 	for gdKey, gd := range self.allGroup {
@@ -207,5 +244,93 @@ func (self *CacheData) check() error {
 		}
 	}
 	err = nil
+	return err
+}
+
+func (self *CacheData) findUser(uId *int64, uAlias *string) (ud *UserData, err error) {
+	ud = nil
+	err = nil
+	if (uId == nil && uAlias == nil) || (uId != nil && uAlias != nil) {
+		err = errors.New("uId和uAlias需要:有且仅有一个有效数据!")
+		return
+	}
+
+	if uId != nil {
+		var isOk bool = false
+		if ud, isOk = self.allUser[(*uId)]; !isOk {
+			err = errors.New(fmt.Sprintf("找不到uId=%v的用户", *uId))
+			return
+		} else {
+			return
+		}
+	} else if uAlias != nil {
+		for _, _ud := range self.allUser {
+			if _ud.Alias == *uAlias {
+				ud = _ud
+				return
+			}
+		}
+		err = errors.New(fmt.Sprintf("找不到uAlias=%v的用户", *uAlias))
+		return
+	} else {
+		panic("程序进入了无法到达的逻辑!")
+	}
+}
+
+func (self *CacheData) calcMaxUserId() int64 {
+	var maxId int64 = 0
+	for _, ud := range self.allUser {
+		if maxId < ud.Id {
+			maxId = ud.Id
+		}
+	}
+	return maxId
+}
+
+func (self *CacheData) addUser(alias string, password string) error {
+	var err error
+	if _, err = self.findUser(nil, &alias); err == nil {
+		err = errors.New(fmt.Sprintf("已经存在alias=%v的用户", alias))
+		return err
+	}
+
+	newUd := innerNewUserData()
+	newUd.Id = self.calcMaxUserId() + 1
+	newUd.Alias = alias
+	newUd.Password = password
+
+	//TODO:真正修改之前,预修改&检查一下,通过之后,再真正的修改.
+	self.allUser[newUd.Id] = newUd
+	if err = self.check(); err != nil {
+		panic(err)
+	}
+
+	return err
+}
+
+func (self *CacheData) AddFriends(fId1 int64, fId2 int64) error {
+	var err error
+	var ud1 *UserData = nil
+	var ud2 *UserData = nil
+	if ud1, err = self.findUser(&fId1, nil); err != nil {
+		return err
+	}
+	if ud2, err = self.findUser(&fId2, nil); err != nil {
+		return err
+	}
+	if err = self.check(); err != nil { //真正操作前,先检查一下数据,这样,出问题的时候,可以知道,是"已经出问题了"还是"本次操作出现了问题".
+		return err
+	}
+	if _, ok := ud1.FriendPos[ud2.Id]; ok {
+		err = errors.New("已经是好友了")
+		return err
+	} else {
+		ud1.FriendPos[ud2.Id] = 0
+		ud2.FriendPos[ud1.Id] = 0
+		self.mapRowIdx[calcTableNameFriend(ud1.Id, ud2.Id)] = 0
+		if err = self.check(); err != nil {
+			panic(err)
+		}
+	}
 	return err
 }

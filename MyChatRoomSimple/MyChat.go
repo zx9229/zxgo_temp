@@ -77,10 +77,20 @@ func (self *MyChat) Init(driverName string, dataSourceName string, locationName 
 			break
 		}
 
+		if true {
+			someTablename := make([]string, 0)
+			someTablename = append(someTablename, calcTablenameXorm(self.engine, new(PushMessageRaw)))
+			someTablename = append(someTablename, calcTablenameXorm(self.engine, new(PushMessage)))
+			someTablename = append(someTablename, calcTablenameXorm(self.engine, new(ChatMessageRaw)))
+			self.cache.fillSomeData(someTablename)
+		}
+
 		if err = self.loadDataFromDbWithLock(); err != nil {
 			break
 		}
 
+		self.cache.TbPushMessageRaw = calcTablenameXorm(self.engine, &PushMessageRaw{})
+		self.cache.TbPushMessage = calcTablenameXorm(self.engine, &PushMessage{})
 	}
 
 	return err
@@ -167,7 +177,7 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 		}
 
 		kvData := KeyValue{}
-		kvData.Key = reflect.TypeOf(self.cache).Name()
+		kvData.Key = reflect.TypeOf(*(self.cache)).Name()
 		kvData.Value = string(jsonByte)
 		self.allKV[kvData.Key] = kvData
 
@@ -192,5 +202,36 @@ func (self *MyChat) UpdateOnce(bean interface{}, condiBeans ...interface{}) erro
 	if (affected <= 0 && err == nil) || (affected > 0 && err != nil) {
 		panic(fmt.Sprintf("xorm的逻辑异常,Update,affected=%v,err=%v", affected, err))
 	}
+	return err
+}
+
+func (self *MyChat) addUser(alias string, password string) error {
+	var err error
+	if err = self.cache.addUser(alias, password); err != nil {
+		return err
+	}
+	if err = self.saveDataToDbWithLock(); err != nil {
+		return err
+	}
+	return err
+}
+
+func (self *MyChat) AddFriends(fId1 int64, fId2 int64) error {
+	var err error
+	for _ = range "1" {
+		if err = self.cache.AddFriends(fId1, fId2); err != nil {
+			break
+		}
+		cm := new(ChatMessage)
+		cm.MyTn = calcTableNameFriend(fId1, fId2)
+		if err = self.engine.CreateTables(cm); err != nil { //应该是:只要存在这个tablename,就跳过它.
+			break
+		}
+
+		if err = self.saveDataToDbWithLock(); err != nil {
+			break
+		}
+	}
+
 	return err
 }

@@ -104,3 +104,17 @@ func (self *ChatMessage) TableName() string {
 	}
 	return self.MyTn
 }
+
+func innerNewUserData() *UserData {
+	newData := &UserData{}
+	newData.Id = 0
+	newData.Alias = ""
+	newData.Password = ""
+	newData.GroupPos = make(map[int64]int64)
+	newData.FriendPos = make(map[int64]int64)
+	newData.NoticePos = 0
+	newData.CreateTime = time.Now()
+	newData.UpdateTime = time.Now()
+	newData.Memo = ""
+	return newData
+}
