@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/go-xorm/core"
 	"github.com/go-xorm/xorm"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/zx9229/zxgo/zxxorm"
 )
 
 type MyChat struct {
@@ -67,6 +67,10 @@ func (self *MyChat) Init(driverName string, dataSourceName string, locationName 
 			break
 		}
 
+		if false {
+			self.engine.ShowSQL(true)
+		}
+
 		if location != nil {
 			self.engine.TZLocation = location
 		}
@@ -80,7 +84,6 @@ func (self *MyChat) Init(driverName string, dataSourceName string, locationName 
 		if err = self.loadDataFromDbWithLock(); err != nil {
 			break
 		}
-
 	}
 
 	return err
@@ -178,7 +181,7 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 
 		var errWhenUpdate bool = false
 		for _, kv := range self.allKV {
-			if err = self.InsertOne(&kv); err != nil {
+			if err = zxxorm.Upsert(self.engine, &kv); err != nil {
 				errWhenUpdate = true
 				break
 			}
@@ -189,22 +192,6 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 
 	}
 
-	return err
-}
-
-func (self *MyChat) InsertOne(bean interface{}) error {
-	affected, err := self.engine.InsertOne(bean)
-	if (affected <= 0 && err == nil) || (affected > 0 && err != nil) {
-		panic(fmt.Sprintf("xorm的逻辑异常,InsertOne,affected=%v,err=%v", affected, err))
-	}
-	return err
-}
-
-func (self *MyChat) UpdateOnce(bean interface{}, condiBeans ...interface{}) error {
-	affected, err := self.engine.Update(bean, condiBeans...)
-	if (affected <= 0 && err == nil) || (affected > 0 && err != nil) {
-		panic(fmt.Sprintf("xorm的逻辑异常,Update,affected=%v,err=%v", affected, err))
-	}
 	return err
 }
 
