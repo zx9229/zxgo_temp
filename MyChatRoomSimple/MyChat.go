@@ -18,7 +18,7 @@ import (
 type MyChat struct {
 	engine     *xorm.Engine
 	rwMutex    *sync.Mutex
-	cache      *CacheData
+	cache      *InnerCacheData
 	allKV      map[string]KeyValue
 	chanPmr    chan *PushMessageRaw //存数据库专用
 	chanPm     chan *PushMessage    //存数据库专用
@@ -139,7 +139,7 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 			self.allKV[kv.Key] = kv
 		}
 
-		var tmpCache *CacheData = new(CacheData) //此时(self.cache == nil)是true.
+		var tmpCache *InnerCacheData = new(InnerCacheData) //此时(self.cache == nil)是true.
 		if kvData, ok := self.allKV[reflect.TypeOf(tmpCache).Name()]; ok {
 			if err = json.Unmarshal([]byte(kvData.Value), tmpCache); err != nil {
 				break
@@ -147,7 +147,7 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 				self.cache = tmpCache
 			}
 		} else {
-			self.cache = NewCacheData(self.engine)
+			self.cache = NewInnerCacheData(self.engine)
 		}
 	}
 
@@ -178,7 +178,7 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 
 		var errWhenUpdate bool = false
 		for _, kv := range self.allKV {
-			if err = self.UpdateOnce(&kv); err != nil {
+			if err = self.InsertOne(&kv); err != nil {
 				errWhenUpdate = true
 				break
 			}
@@ -189,6 +189,14 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 
 	}
 
+	return err
+}
+
+func (self *MyChat) InsertOne(bean interface{}) error {
+	affected, err := self.engine.InsertOne(bean)
+	if (affected <= 0 && err == nil) || (affected > 0 && err != nil) {
+		panic(fmt.Sprintf("xorm的逻辑异常,InsertOne,affected=%v,err=%v", affected, err))
+	}
 	return err
 }
 

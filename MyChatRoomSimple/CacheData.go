@@ -42,29 +42,29 @@ func myInSlice(dataItem int64, dataSlice []int64) bool {
 	return false
 }
 
-type CacheData struct { //内存中的缓存数据.
-	allUser          map[int64]*UserData  //所有的用户数据.
-	allGroup         map[int64]*GroupData //所有的组数据.
-	mapRowIdx        map[string]int64     //以Id递增的表,缓存了它的序号.
-	tnPushMessageRaw string               //tableName of PushMessageRaw.
-	tnPushMessage    string               //talbeName of PushMessage.
+type InnerCacheData struct { //内存中的缓存数据.
+	AllUser          map[int64]*UserData  //所有的用户数据.
+	AllGroup         map[int64]*GroupData //所有的组数据.
+	MapRowIdx        map[string]int64     //以Id递增的表,缓存了它的序号.
+	TnPushMessageRaw string               //tableName of PushMessageRaw.
+	TnPushMessage    string               //talbeName of PushMessage.
 }
 
-func NewCacheData(engine *xorm.Engine) *CacheData {
-	newData := new(CacheData)
+func NewInnerCacheData(engine *xorm.Engine) *InnerCacheData {
+	newData := new(InnerCacheData)
 
-	newData.allUser = make(map[int64]*UserData)
-	newData.allGroup = make(map[int64]*GroupData)
-	newData.mapRowIdx = make(map[string]int64)
-	newData.tnPushMessageRaw = calcTablenameXorm(engine, new(PushMessageRaw))
-	newData.tnPushMessage = calcTablenameXorm(engine, new(PushMessage))
-	newData.mapRowIdx[newData.tnPushMessageRaw] = 0
-	newData.mapRowIdx[newData.tnPushMessage] = 0
+	newData.AllUser = make(map[int64]*UserData)
+	newData.AllGroup = make(map[int64]*GroupData)
+	newData.MapRowIdx = make(map[string]int64)
+	newData.TnPushMessageRaw = calcTablenameXorm(engine, new(PushMessageRaw))
+	newData.TnPushMessage = calcTablenameXorm(engine, new(PushMessage))
+	newData.MapRowIdx[newData.TnPushMessageRaw] = 0
+	newData.MapRowIdx[newData.TnPushMessage] = 0
 
 	return newData
 }
 
-func (self *CacheData) checkFriends(uId1 int64, uId2 int64) error {
+func (self *InnerCacheData) checkFriends(uId1 int64, uId2 int64) error {
 	var err error
 	var ok bool = false
 	var ud1 *UserData = nil
@@ -73,16 +73,16 @@ func (self *CacheData) checkFriends(uId1 int64, uId2 int64) error {
 	var curU1RecvPosition int64 = -1 //数据库表中,当前时刻,用户已经接收了哪个序号的数据.
 	var curU2RecvPosition int64 = -1 //数据库表中,当前时刻,用户已经接收了哪个序号的数据.
 
-	if ud1, ok = self.allUser[uId1]; !ok {
+	if ud1, ok = self.AllUser[uId1]; !ok {
 		err = errors.New(fmt.Sprintf("找不到id=%v的用户", uId1))
 		return err
 	}
-	if ud2, ok = self.allUser[uId2]; !ok {
+	if ud2, ok = self.AllUser[uId2]; !ok {
 		err = errors.New(fmt.Sprintf("找不到id=%v的用户", uId2))
 		return err
 	}
 	curTablename := calcTableNameFriend(uId1, uId2)
-	if curLastRowIdx, ok = self.mapRowIdx[curTablename]; !ok {
+	if curLastRowIdx, ok = self.MapRowIdx[curTablename]; !ok {
 		err = errors.New(fmt.Sprintf("找不到%v的数据库表", curTablename))
 		return err
 	}
@@ -102,12 +102,12 @@ func (self *CacheData) checkFriends(uId1 int64, uId2 int64) error {
 	return err
 }
 
-func (self *CacheData) checkGroup(gId int64) error {
+func (self *InnerCacheData) checkGroup(gId int64) error {
 	var err error
 	var ok bool
 	var gd *GroupData = nil
 
-	if gd, ok = self.allGroup[gId]; !ok {
+	if gd, ok = self.AllGroup[gId]; !ok {
 		err = errors.New(fmt.Sprintf("找不到groupId=%v的组", gId))
 		return err
 	}
@@ -136,7 +136,7 @@ func (self *CacheData) checkGroup(gId int64) error {
 	return err
 }
 
-func (self *CacheData) checkGroupMember(uId int64, gId int64) error {
+func (self *InnerCacheData) checkGroupMember(uId int64, gId int64) error {
 	var err error
 	var ok bool
 	var ud *UserData = nil
@@ -144,16 +144,16 @@ func (self *CacheData) checkGroupMember(uId int64, gId int64) error {
 	var curLastRowIdx int64 = -1   //数据库表中,当前时刻,最新的那一行,的序号.
 	var curRecvPosition int64 = -1 //数据库表中,当前时刻,用户已经接收了哪个序号的数据.
 
-	if ud, ok = self.allUser[uId]; !ok {
+	if ud, ok = self.AllUser[uId]; !ok {
 		err = errors.New(fmt.Sprintf("找不到userId=%v的用户", uId))
 		return err
 	}
-	if gd, ok = self.allGroup[gId]; !ok {
+	if gd, ok = self.AllGroup[gId]; !ok {
 		err = errors.New(fmt.Sprintf("找不到groupId=%v的组", gId))
 		return err
 	}
 	curTablename := calcTableNameGroup(gId)
-	if curLastRowIdx, ok = self.mapRowIdx[curTablename]; !ok {
+	if curLastRowIdx, ok = self.MapRowIdx[curTablename]; !ok {
 		err = errors.New(fmt.Sprintf("找不到名为%v的数据库表", curTablename))
 		return err
 	}
@@ -173,26 +173,26 @@ func (self *CacheData) checkGroupMember(uId int64, gId int64) error {
 	return err
 }
 
-func (self *CacheData) check() error {
+func (self *InnerCacheData) check() error {
 	var err error
 
 	var curLastRowIndexNotice int64
 	var ok bool
-	if curLastRowIndexNotice, ok = self.mapRowIdx[self.tnPushMessage]; !ok {
-		err = errors.New(fmt.Sprintf("找不到%v的数据库表", self.tnPushMessage))
+	if curLastRowIndexNotice, ok = self.MapRowIdx[self.TnPushMessage]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", self.TnPushMessage))
 		return err
 	}
 
-	allUserAlias := make(map[string]bool)
-	for _, ud := range self.allUser {
-		allUserAlias[ud.Alias] = true
+	AllUserAlias := make(map[string]bool)
+	for _, ud := range self.AllUser {
+		AllUserAlias[ud.Alias] = true
 	}
-	if len(allUserAlias) != len(self.allUser) {
+	if len(AllUserAlias) != len(self.AllUser) {
 		err = errors.New(fmt.Sprintf("数据异常:用户的别名有重复"))
 		return err
 	}
 
-	for udKey, ud := range self.allUser {
+	for udKey, ud := range self.AllUser {
 		if udKey != ud.Id {
 			err = errors.New(fmt.Sprintf("数据异常,udKey=%v,udId=%v", udKey, ud.Id))
 			return err
@@ -208,21 +208,21 @@ func (self *CacheData) check() error {
 			}
 		}
 		if ud.NoticePos < 0 || curLastRowIndexNotice < 0 || curLastRowIndexNotice < ud.NoticePos {
-			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", self.tnPushMessage, curLastRowIndexNotice, ud.Id, ud.NoticePos))
+			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", self.TnPushMessage, curLastRowIndexNotice, ud.Id, ud.NoticePos))
 			return err
 		}
 	}
 
-	allGroupAlias := make(map[string]bool)
-	for _, gd := range self.allGroup {
-		allGroupAlias[gd.Alias] = true
+	AllGroupAlias := make(map[string]bool)
+	for _, gd := range self.AllGroup {
+		AllGroupAlias[gd.Alias] = true
 	}
-	if len(allGroupAlias) != len(self.allGroup) {
+	if len(AllGroupAlias) != len(self.AllGroup) {
 		err = errors.New(fmt.Sprintf("数据异常:组的别名有重复"))
 		return err
 	}
 
-	for gdKey, gd := range self.allGroup {
+	for gdKey, gd := range self.AllGroup {
 		if gdKey != gd.Id {
 			err = errors.New(fmt.Sprintf("数据异常,gdKey=%v,gdId=%v", gdKey, gd.Id))
 			return err
@@ -231,7 +231,7 @@ func (self *CacheData) check() error {
 			return err
 		}
 	}
-	for tbName, rowIdx := range self.mapRowIdx {
+	for tbName, rowIdx := range self.MapRowIdx {
 		if len(tbName) <= 0 || rowIdx < 0 {
 			err = errors.New(fmt.Sprintf("数据异常,tbName=%v,rowIdx=%v", tbName, rowIdx))
 			return err
@@ -241,7 +241,7 @@ func (self *CacheData) check() error {
 	return err
 }
 
-func (self *CacheData) findUser(uId *int64, uAlias *string) (ud *UserData, err error) {
+func (self *InnerCacheData) findUser(uId *int64, uAlias *string) (ud *UserData, err error) {
 	ud = nil
 	err = nil
 	if (uId == nil && uAlias == nil) || (uId != nil && uAlias != nil) {
@@ -251,14 +251,14 @@ func (self *CacheData) findUser(uId *int64, uAlias *string) (ud *UserData, err e
 
 	if uId != nil {
 		var isOk bool = false
-		if ud, isOk = self.allUser[(*uId)]; !isOk {
+		if ud, isOk = self.AllUser[(*uId)]; !isOk {
 			err = errors.New(fmt.Sprintf("找不到uId=%v的用户", *uId))
 			return
 		} else {
 			return
 		}
 	} else if uAlias != nil {
-		for _, _ud := range self.allUser {
+		for _, _ud := range self.AllUser {
 			if _ud.Alias == *uAlias {
 				ud = _ud
 				return
@@ -271,9 +271,9 @@ func (self *CacheData) findUser(uId *int64, uAlias *string) (ud *UserData, err e
 	}
 }
 
-func (self *CacheData) calcMaxUserId() int64 {
+func (self *InnerCacheData) calcMaxUserId() int64 {
 	var maxId int64 = 0
-	for _, ud := range self.allUser {
+	for _, ud := range self.AllUser {
 		if maxId < ud.Id {
 			maxId = ud.Id
 		}
@@ -281,7 +281,7 @@ func (self *CacheData) calcMaxUserId() int64 {
 	return maxId
 }
 
-func (self *CacheData) addUser(alias string, password string) error {
+func (self *InnerCacheData) addUser(alias string, password string) error {
 	var err error
 	if _, err = self.findUser(nil, &alias); err == nil {
 		err = errors.New(fmt.Sprintf("已经存在alias=%v的用户", alias))
@@ -294,7 +294,7 @@ func (self *CacheData) addUser(alias string, password string) error {
 	newUd.Password = password
 
 	//TODO:真正修改之前,预修改&检查一下,通过之后,再真正的修改.
-	self.allUser[newUd.Id] = newUd
+	self.AllUser[newUd.Id] = newUd
 	if err = self.check(); err != nil {
 		panic(err)
 	}
@@ -302,7 +302,7 @@ func (self *CacheData) addUser(alias string, password string) error {
 	return err
 }
 
-func (self *CacheData) AddFriends(fId1 int64, fId2 int64) error {
+func (self *InnerCacheData) AddFriends(fId1 int64, fId2 int64) error {
 	var err error
 	var ud1 *UserData = nil
 	var ud2 *UserData = nil
@@ -321,7 +321,7 @@ func (self *CacheData) AddFriends(fId1 int64, fId2 int64) error {
 	} else {
 		ud1.FriendPos[ud2.Id] = 0
 		ud2.FriendPos[ud1.Id] = 0
-		self.mapRowIdx[calcTableNameFriend(ud1.Id, ud2.Id)] = 0
+		self.MapRowIdx[calcTableNameFriend(ud1.Id, ud2.Id)] = 0
 		if err = self.check(); err != nil {
 			panic(err)
 		}
