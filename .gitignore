@@ -14,5 +14,6 @@
 .glide/
 
 # 我要忽略的一些文件
+.vscode
 debug
 *.db
