@@ -1,4 +1,9 @@
 package TxStruct //通信结构体.
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+)
 
 type BaseTxData struct {
 	Type string
@@ -122,4 +127,47 @@ type CreateGroupRsp struct {
 type QueryUser struct {
 	Type       string
 	TransmitId int64
+}
+
+func InitMap() map[string]reflect.Type {
+	slice_ := make([]interface{}, 0)
+	slice_ = append(slice_, RspMessage{})
+	slice_ = append(slice_, ChatMessage{})
+
+	cacheData := map[string]reflect.Type{}
+	for _, element := range slice_ {
+		curType := reflect.ValueOf(element).Type()
+		cacheData[curType.Name()] = curType
+	}
+
+	return cacheData
+}
+
+func ThisIsExample() {
+	cacheTypeData := InitMap()
+	testMsg := RspMessage{}
+	testMsg.Type = reflect.ValueOf(testMsg).Type().Name()
+	testMsg.TransmitId = 1
+	testMsg.Code = 2
+	testMsg.Message = "testting..."
+	if jsonByte, err := json.Marshal(testMsg); err != nil {
+		panic(err)
+	} else {
+		var baseData *BaseTxData = &BaseTxData{}
+		if err := json.Unmarshal(jsonByte, baseData); err != nil {
+			panic(err)
+		}
+		if curType, ok := cacheTypeData[baseData.Type]; !ok {
+			panic("")
+		} else {
+			curValue := reflect.New(curType).Interface()
+			if err = json.Unmarshal(jsonByte, curValue); err != nil {
+				panic(err)
+			}
+			fmt.Println(curValue)
+			if baseData.Type == "RspMessage" {
+				fmt.Println("这一段,仍然是硬编码,我还不知道要怎么处理...")
+			}
+		}
+	}
 }
