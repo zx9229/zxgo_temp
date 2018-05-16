@@ -143,7 +143,17 @@ func InitMap() map[string]reflect.Type {
 	return cacheData
 }
 
+type Handler func(i interface{})
+
+func cbRspMessage(i interface{}) {
+	fmt.Println(i)
+}
+
 func ThisIsExample() {
+
+	cbMap := map[reflect.Type]Handler{}
+	cbMap[reflect.ValueOf(RspMessage{}).Type()] = cbRspMessage
+
 	cacheTypeData := InitMap()
 	testMsg := RspMessage{}
 	testMsg.Type = reflect.ValueOf(testMsg).Type().Name()
@@ -164,9 +174,11 @@ func ThisIsExample() {
 			if err = json.Unmarshal(jsonByte, curValue); err != nil {
 				panic(err)
 			}
-			fmt.Println(curValue)
-			if baseData.Type == "RspMessage" {
-				fmt.Println("这一段,仍然是硬编码,我还不知道要怎么处理...")
+
+			if cb, ok := cbMap[curType]; !ok {
+				panic("")
+			} else {
+				cb(curValue)
 			}
 		}
 	}
