@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <script type="text/javascript">
+
+      function myIsNull(tmp) {
+          if (!tmp && typeof (tmp) != "undefined" && tmp != 0) {
+              return true;
+          } else {
+              return false;
+          }
+      }
+
+      var websocket = null;
+
+      //创建连接.
+      function createWebSocket() {
+          if (myIsNull(websocket) == false) {
+              appendDataToElse("[createWebSocket]", "WebSocket已创建!")
+              return;
+          }
+          //判断当前浏览器是否支持WebSocket.
+          if (('WebSocket' in window)==false) {
+              appendDataToElse("[createWebSocket]", "您的浏览器不支持WebSocket!");
+              return;
+          }
+
+          var urlValue = document.getElementById('url').value;
+          websocket = new WebSocket(urlValue);
+
+          //连接成功建立的回调方法
+          websocket.onopen = function (event) {
+              appendDataToElse("[websocket.onopen]","链接成功,欢迎加入聊天室");
+          }
+
+          //连接关闭的回调方法
+          websocket.onclose = function () {
+              appendDataToElse("[websocket.onclose]","连接被关闭!");
+          }
+
+          //连接发生错误的回调方法
+          websocket.onerror = function () {
+              appendDataToElse("","[websocket.onerror]","发生了错误!");
+          };
+
+          //接收到消息的回调方法
+          websocket.onmessage = function (event) {
+              appendDataToRecv( "[websocket.onmessage]",event.data);
+          }
+
+          //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
+          window.onbeforeunload = function () {
+              appendDataToElse("[window.onbeforeunload]","出现了异常?");
+              websocket.close();
+          }
+      }
+
+      //关闭连接
+      function closeWebSocket() {
+          if (myIsNull(websocket) == true) {
+              appendDataToElse("[closeWebSocket]", "WebSocket已关闭!无法再次关闭!")
+          } else {
+              websocket.close();
+              websocket = null;
+              appendDataToElse("[websocket.close]", "主动关闭连接.")
+          }
+      }
+
+      //发送消息
+      function sendMessage() {
+          websocket.send(document.getElementById('txt_send').value);
+          //发送消息后，发送消息框自动清空
+          document.getElementById('txt_send').value = "";
+      }
+
+      function appendDataToSend(appInfo, textData) {
+          var prevValue = document.getElementById('txt_send').value;
+          document.getElementById('txt_send').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
+      }
+
+      function appendDataToRecv(appInfo,textData) {
+          var prevValue = document.getElementById('txt_recv').value;
+          document.getElementById('txt_recv').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
+      }
+
+      function appendDataToElse(appInfo, textData) {
+          var prevValue = document.getElementById('txt_else').value;
+          document.getElementById('txt_else').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
+      }
+
+      function nowStr() {
+          return  (new Date()).toLocaleTimeString();
+      }
+    </script>
+</head>
+
+<body>
+    <div>
+        <h3><a href="https://segmentfault.com/a/1190000011397883">如何利用WebSocket实现网页版聊天室</a></h3>
+    </div>
+
+    <div>
+        URL：<input id="url" type="text" style="width:400px" value="ws://localhost:8080/websocket" /><br>
+        <button onclick="createWebSocket()">创建WebSocket</button>
+        <button onclick="closeWebSocket()">关闭WebSocket</button>
+        <button onclick="sendMessage()">发送消息</button>
+    </div>
+
+    <table border="1">
+        <tr>
+            <th>发送的内容</th>
+            <th>接收的内容</th>
+            <th>其他的内容</th>
+        </tr>
+        <tr>
+            <td><textarea id="txt_send" rows="15" cols="40" wrap="soft"></textarea></td>
+            <td><textarea id="txt_recv" rows="15" cols="40" wrap="soft"></textarea></td>
+            <td><textarea id="txt_else" rows="15" cols="40" wrap="soft"></textarea></td>
+        </tr>
+    </table>
+</body>
+</html>
