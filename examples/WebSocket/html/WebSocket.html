@@ -16,11 +16,11 @@
       //创建连接.
       function createWebSocket() {
           if (myIsNull(websocket) == false) {
-              appendDataToElse("[createWebSocket]", "WebSocket已创建!")
+              appendDataToElse("[createWebSocket]", "WebSocket已创建!无法再次创建!")
               return;
           }
           //判断当前浏览器是否支持WebSocket.
-          if (('WebSocket' in window)==false) {
+          if (('WebSocket' in window) == false) {
               appendDataToElse("[createWebSocket]", "您的浏览器不支持WebSocket!");
               return;
           }
@@ -30,27 +30,28 @@
 
           //连接成功建立的回调方法
           websocket.onopen = function (event) {
-              appendDataToElse("[websocket.onopen]","链接成功,欢迎加入聊天室");
+              appendDataToElse("[websocket.onopen]","连接成功.");
           }
 
           //连接关闭的回调方法
           websocket.onclose = function () {
-              appendDataToElse("[websocket.onclose]","连接被关闭!");
+              appendDataToElse("[websocket.onclose]", "连接被关闭!");
+              websocket = null;
           }
 
           //连接发生错误的回调方法
           websocket.onerror = function () {
-              appendDataToElse("","[websocket.onerror]","发生了错误!");
+              appendDataToElse("","[websocket.onerror]", "发生了错误!");
           };
 
           //接收到消息的回调方法
           websocket.onmessage = function (event) {
-              appendDataToRecv( "[websocket.onmessage]",event.data);
+              appendDataToRecv( "[websocket.onmessage]", event.data);
           }
 
           //监听窗口关闭事件，当窗口关闭时，主动去关闭websocket连接，防止连接还没断开就关闭窗口，server端会抛异常。
           window.onbeforeunload = function () {
-              appendDataToElse("[window.onbeforeunload]","出现了异常?");
+              appendDataToElse("[window.onbeforeunload]", "出现了异常?");
               websocket.close();
           }
       }
@@ -58,11 +59,11 @@
       //关闭连接
       function closeWebSocket() {
           if (myIsNull(websocket) == true) {
-              appendDataToElse("[closeWebSocket]", "WebSocket已关闭!无法再次关闭!")
+              appendDataToElse("[closeWebSocket]", "WebSocket已关闭!无法再次关闭!");
           } else {
               websocket.close();
               websocket = null;
-              appendDataToElse("[websocket.close]", "主动关闭连接.")
+              appendDataToElse("[websocket.close]", "主动关闭连接.");
           }
       }
 
@@ -78,7 +79,7 @@
           document.getElementById('txt_send').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
       }
 
-      function appendDataToRecv(appInfo,textData) {
+      function appendDataToRecv(appInfo, textData) {
           var prevValue = document.getElementById('txt_recv').value;
           document.getElementById('txt_recv').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
       }
