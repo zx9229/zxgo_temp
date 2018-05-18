@@ -77,17 +77,25 @@
 
         function appendDataToSend(appInfo, textData) {
             var prevValue = document.getElementById('txt_send').value;
-            document.getElementById('txt_send').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
+            document.getElementById('txt_send').value = "[" + nowStr() + "](" + appInfo + ")=>\n" + textData + "\n" + prevValue;
         }
 
         function appendDataToRecv(appInfo, textData) {
             var prevValue = document.getElementById('txt_recv').value;
-            document.getElementById('txt_recv').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
+            document.getElementById('txt_recv').value = "[" + nowStr() + "](" + appInfo + ")=>\n" + textData + "\n" + prevValue;
         }
 
         function appendDataToElse(appInfo, textData) {
             var prevValue = document.getElementById('txt_else').value;
-            document.getElementById('txt_else').value = prevValue + "\n" + "[" + nowStr() + "](" + appInfo + ")=>\n" + textData;
+            document.getElementById('txt_else').value = "[" + nowStr() + "](" + appInfo + ")=>\n" + textData + "\n" + prevValue;
+        }
+
+        function clearRecvTextArea() {
+            document.getElementById('txt_recv').value = "";
+        }
+
+        function clearElseTextArea() {
+            document.getElementById('txt_else').value = "";
         }
 
         function nowStr() {
@@ -109,10 +117,20 @@
         <br>
         <button onclick="createWebSocket()">创建WebSocket</button>
         <button onclick="closeWebSocket()">关闭WebSocket</button>
-        <button onclick="sendMessage()">发送消息</button>
     </div>
 
     <table border="1">
+        <tr>
+            <th>
+                <button onclick="sendMessage()">发送消息</button>
+            </th>
+            <th>
+                <button onclick="clearRecvTextArea()">清空</button>
+            </th>
+            <th>
+                <button onclick="clearElseTextArea()">清空</button>
+            </th>
+        </tr>
         <tr>
             <th>发送的内容</th>
             <th>接收的内容</th>
