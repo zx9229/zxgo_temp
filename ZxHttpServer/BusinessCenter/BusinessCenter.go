@@ -37,8 +37,14 @@ func (self *DataCenter) Handle_websocket_Operation_Error(ws *websocket.Conn, ope
 	log.Println(fmt.Sprintf("操作失败:ws=%p,%v=>%v", ws, operation, err))
 }
 
-func (self *DataCenter) Handle_Parse_Fail(ws *websocket.Conn, bytes []byte) {
-	log.Println(fmt.Sprintf("解析失败:ws=%p,%v", ws, string(bytes)))
+func (self *DataCenter) Handle_Parse_Fail(ws *websocket.Conn, bytes []byte, obj interface{}, cbOk bool, err error) {
+	log.Println(fmt.Sprintf("解析失败:ws=%p,%v,%v", ws, string(bytes), err))
+	if true {
+		var sendMessage string = "数据处理失败!"
+		if err = websocket.Message.Send(ws, sendMessage); err != nil {
+			self.Handle_websocket_Operation_Error(ws, "Send", err)
+		}
+	}
 }
 
 func (self *DataCenter) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData interface{}) {
@@ -53,8 +59,8 @@ func (self *DataCenter) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData 
 
 func (self *DataCenter) GetRegisterMap() map[reflect.Type]TxStruct.Handler {
 	mapData := make(map[reflect.Type]TxStruct.Handler)
-
+	//
 	mapData[reflect.ValueOf(TxStruct.ChatMessage{}).Type()] = self.Handle_Parse_OK_ChatMessage
-
+	//
 	return mapData
 }

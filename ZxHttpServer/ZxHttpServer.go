@@ -77,14 +77,9 @@ func (self *ZxHttpServer) test_Root_websocket(ws *websocket.Conn) {
 		self.business.Handle_websocket_Receive(ws, recvRawMessage)
 
 		//如果解析成功,会调用(TmpData)里面注册的对应的回调函数.
-		if _, _, err = self.parser.ParseByteSlice(ws, recvRawMessage); err != nil {
-			log.Println(err) //TODO:
-			if false {
-				var sendMessage string = "数据处理失败!"
-				if err = websocket.Message.Send(ws, sendMessage); err != nil {
-					log.Println(fmt.Sprintf("ws=%p,调用Send失败,err=%v", ws, err))
-				}
-			}
+		if obj, cbOk, err2 := self.parser.ParseByteSlice(ws, recvRawMessage); err2 != nil {
+			err = err2
+			self.business.Handle_Parse_Fail(ws, recvRawMessage, obj, cbOk, err2)
 		}
 	}
 }
