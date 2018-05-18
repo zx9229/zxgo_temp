@@ -93,25 +93,22 @@ func (self *TxParser) ParseByteSlice(ws *websocket.Conn, jsonByte []byte) (objDa
 	return
 }
 
-func cbRspMessage(ws *websocket.Conn, i interface{}) {
-	fmt.Println(i)
-}
-
 func ThisIsExample() {
 
-	xxObj := New_TxParser()
-	xxObj.RegisterHandler(reflect.ValueOf(RspMessage{}).Type(), cbRspMessage)
+	parser := New_TxParser()
+	parser.RegisterHandler(reflect.ValueOf(RspMessage{}).Type(), cbRspMessage)
 
-	testMsg := RspMessage{}
-	testMsg.Type = reflect.ValueOf(testMsg).Type().Name()
-	testMsg.TransmitId = 1
-	testMsg.Code = 2
-	testMsg.Message = "testting..."
-	if jsonByte, err := json.Marshal(testMsg); err != nil {
+	someObj := RspMessage{}
+	someObj.FillField_Type()
+	someObj.Message = "data_for_test"
+	if jsonByte, err := json.Marshal(someObj); err != nil {
 		panic(err)
 	} else {
-		if _, _, err := xxObj.ParseByteSlice(nil, jsonByte); err != nil {
+		if _, _, err := parser.ParseByteSlice(nil, jsonByte); err != nil {
 			panic(err)
 		}
 	}
+}
+func cbRspMessage(ws *websocket.Conn, i interface{}) {
+	fmt.Println(i)
 }
