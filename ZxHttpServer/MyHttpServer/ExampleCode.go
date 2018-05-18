@@ -32,25 +32,25 @@ type DefaultDataBusiness struct {
 }
 
 func (self *DefaultDataBusiness) Handle_WebSocket_Connected(ws *websocket.Conn) {
-	log.Println(fmt.Sprintf("收到连接:ws=%p,RemoteAddr=%v", ws, ws.Request().RemoteAddr))
+	log.Println(fmt.Sprintf("收到连接:ws=[%p],RemoteAddr=%v", ws, ws.Request().RemoteAddr))
 }
 
 func (self *DefaultDataBusiness) Handle_WebSocket_Disconnected(ws *websocket.Conn) {
-	log.Println(fmt.Sprintf("断开连接:ws=%p", ws))
+	log.Println(fmt.Sprintf("断开连接:ws=[%p]", ws))
 }
 
 func (self *DefaultDataBusiness) Handle_WebSocket_Receive(ws *websocket.Conn, bytes []byte) {
 	if false {
-		log.Println(fmt.Sprintf("收到消息:ws=%p,%v", ws, string(bytes)))
+		log.Println(fmt.Sprintf("收到消息:ws=[%p],%v", ws, string(bytes)))
 	}
 }
 
 func (self *DefaultDataBusiness) Handle_WebSocket_Operation_Error(ws *websocket.Conn, operation string, err error) {
-	log.Println(fmt.Sprintf("操作失败:ws=%p,%v=>%v", ws, operation, err))
+	log.Println(fmt.Sprintf("操作失败:ws=[%p],%v=>%v", ws, operation, err))
 }
 
 func (self *DefaultDataBusiness) Handle_Parse_Fail(ws *websocket.Conn, bytes []byte, obj interface{}, cbOk bool, err error) {
-	log.Println(fmt.Sprintf("解析失败:ws=%p,%v,%v", ws, string(bytes), err))
+	log.Println(fmt.Sprintf("解析失败:ws=[%p],%v,%v", ws, string(bytes), err))
 
 	var sendMessage string = "数据处理失败!"
 	if err = websocket.Message.Send(ws, sendMessage); err != nil {
