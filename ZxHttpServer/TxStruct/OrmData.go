@@ -16,16 +16,18 @@ type innerPair struct {
 	handler Handler      //回调函数.
 }
 
-type OrmData struct {
+type TxParser struct {
 	mapStr2Data map[string]*innerPair
 }
 
-func New_OrmData() *OrmData {
-	newData := new(OrmData)
+func New_TxParser() *TxParser {
+	newData := new(TxParser)
 	newData.mapStr2Data = make(map[string]*innerPair)
+
 	for k, v := range initMap() {
 		newData.mapStr2Data[k] = &innerPair{v, nil}
 	}
+
 	return newData
 }
 
@@ -43,21 +45,22 @@ func initMap() map[string]reflect.Type {
 	return cacheData
 }
 
-func (self *OrmData) RegisterHandler(curType reflect.Type, cbFun Handler) {
+func (self *TxParser) RegisterHandler(curType reflect.Type, cbFun Handler) bool {
 	for _, vData := range self.mapStr2Data {
 		if vData.refType == curType {
 			vData.handler = cbFun
-			return
+			return true
 		}
 	}
+	return false
 }
 
-func (self *OrmData) ParseString(ws *websocket.Conn, jsonStr string) (objData interface{}, cbOk bool, err error) {
+func (self *TxParser) ParseString(ws *websocket.Conn, jsonStr string) (objData interface{}, cbOk bool, err error) {
 	return self.ParseByteSlice(ws, []byte(jsonStr))
 }
 
 // objData:反序列化jsonByte后,得到的对象; cbOk:成功调用对应的回调函数; err:错误的详细情况.
-func (self *OrmData) ParseByteSlice(ws *websocket.Conn, jsonByte []byte) (objData interface{}, cbOk bool, err error) {
+func (self *TxParser) ParseByteSlice(ws *websocket.Conn, jsonByte []byte) (objData interface{}, cbOk bool, err error) {
 	objData = nil
 	cbOk = false
 	err = nil
@@ -96,7 +99,7 @@ func cbRspMessage(ws *websocket.Conn, i interface{}) {
 
 func ThisIsExample() {
 
-	xxObj := New_OrmData()
+	xxObj := New_TxParser()
 	xxObj.RegisterHandler(reflect.ValueOf(RspMessage{}).Type(), cbRspMessage)
 
 	testMsg := RspMessage{}

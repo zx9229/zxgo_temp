@@ -15,8 +15,8 @@ import (
 
 type ZxHttpServer struct {
 	httpServer *http.Server
-	TmpData    *TxStruct.OrmData
-	center     *BusinessCenter.DataCenter
+	parser     *TxStruct.TxParser
+	business   *BusinessCenter.DataCenter
 }
 
 func New_ZxHttpServer(listenAddr string) *ZxHttpServer {
@@ -25,11 +25,11 @@ func New_ZxHttpServer(listenAddr string) *ZxHttpServer {
 	newData.httpServer.Addr = listenAddr
 	newData.httpServer.Handler = http.NewServeMux()
 	//
-	newData.TmpData = TxStruct.New_OrmData()
+	newData.parser = TxStruct.New_TxParser()
 	//
-	newData.center = BusinessCenter.New_DataCenter()
+	newData.business = BusinessCenter.New_DataCenter()
 	//
-	newData.TmpData.RegisterHandler(reflect.ValueOf(TxStruct.ChatMessage{}).Type(), newData.center.Handle_Parse_OK_ChatMessage)
+	newData.parser.RegisterHandler(reflect.ValueOf(TxStruct.ChatMessage{}).Type(), newData.business.Handle_Parse_OK_ChatMessage)
 	return newData
 }
 
@@ -57,23 +57,23 @@ func (self *ZxHttpServer) test_Root_websocket(ws *websocket.Conn) {
 	var recvRawMessage []byte = nil
 
 	defer func() {
-		self.center.Handle_websocket_Close(ws)
+		self.business.Handle_websocket_Close(ws)
 		if err = ws.Close(); err != nil {
 			log.Println(fmt.Sprintf("ws=%p,调用Close失败,err=%v", ws, err))
 		}
 	}()
-	self.center.Handle_websocket_Open(ws)
+	self.business.Handle_websocket_Open(ws)
 
 	for {
 		recvRawMessage = nil
 		if err = websocket.Message.Receive(ws, &recvRawMessage); err != nil {
-			self.center.Handle_websocket_Operate_Fail(ws, "Receive", err)
+			self.business.Handle_websocket_Operate_Fail(ws, "Receive", err)
 			return
 		}
-		self.center.Handle_websocket_Receive(ws, recvRawMessage)
+		self.business.Handle_websocket_Receive(ws, recvRawMessage)
 
 		//如果解析成功,会调用(TmpData)里面注册的对应的回调函数.
-		if _, _, err = self.TmpData.ParseByteSlice(ws, recvRawMessage); err != nil {
+		if _, _, err = self.parser.ParseByteSlice(ws, recvRawMessage); err != nil {
 			log.Println(err) //TODO:
 			if false {
 				var sendMessage string = "数据处理失败!"

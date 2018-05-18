@@ -26,7 +26,7 @@ func (self *DataCenter) Handle_websocket_Close(ws *websocket.Conn) {
 }
 
 func (self *DataCenter) Handle_websocket_Receive(ws *websocket.Conn, bytes []byte) {
-	log.Println(fmt.Sprintf("收到消息:ws=%p,%v", ws, string(bytes)))
+	//log.Println(fmt.Sprintf("收到消息:ws=%p,%v", ws, string(bytes)))
 }
 
 func (self *DataCenter) Handle_websocket_Operate_Fail(ws *websocket.Conn, operation string, err error) {
