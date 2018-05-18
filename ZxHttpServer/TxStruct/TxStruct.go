@@ -17,7 +17,7 @@ type RspMessage struct {
 }
 
 func (self *RspMessage) FillField_Type() {
-	self.Type = reflect.ValueOf(self).Type().Name()
+	self.Type = reflect.ValueOf(*self).Type().Name()
 }
 
 //聊天消息
@@ -36,7 +36,7 @@ type ChatMessage struct {
 }
 
 func (self *ChatMessage) FillField_Type() {
-	self.Type = reflect.ValueOf(self).Type().Name()
+	self.Type = reflect.ValueOf(*self).Type().Name()
 }
 
 //通知消息
@@ -54,7 +54,7 @@ type PushMessage struct {
 }
 
 func (self *PushMessage) FillField_Type() {
-	self.Type = reflect.ValueOf(self).Type().Name()
+	self.Type = reflect.ValueOf(*self).Type().Name()
 }
 
 //创建某用户(用户一旦创建,不可删除,只能禁用[为了数据唯一性]).
