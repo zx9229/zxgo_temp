@@ -61,17 +61,17 @@ func (self *ZxHttpServer) test_Root_websocket(ws *websocket.Conn) {
 	var recvRawMessage []byte = nil
 
 	defer func() {
-		self.business.Handle_websocket_Close(ws)
+		self.business.Handle_websocket_Disconnected(ws)
 		if err = ws.Close(); err != nil {
 			log.Println(fmt.Sprintf("ws=%p,调用Close失败,err=%v", ws, err))
 		}
 	}()
-	self.business.Handle_websocket_Open(ws)
+	self.business.Handle_websocket_Connected(ws)
 
 	for {
 		recvRawMessage = nil
 		if err = websocket.Message.Receive(ws, &recvRawMessage); err != nil {
-			self.business.Handle_websocket_Operate_Fail(ws, "Receive", err)
+			self.business.Handle_websocket_Operation_Error(ws, "Receive", err)
 			return
 		}
 		self.business.Handle_websocket_Receive(ws, recvRawMessage)

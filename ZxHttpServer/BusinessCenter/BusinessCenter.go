@@ -15,15 +15,17 @@ type DataCenter struct {
 
 func New_DataCenter() *DataCenter {
 	newData := new(DataCenter)
+	//
 	newData.xyz = nil
+	//
 	return newData
 }
 
-func (self *DataCenter) Handle_websocket_Open(ws *websocket.Conn) {
+func (self *DataCenter) Handle_websocket_Connected(ws *websocket.Conn) {
 	log.Println(fmt.Sprintf("收到连接:ws=%p,RemoteAddr=%v", ws, ws.Request().RemoteAddr))
 }
 
-func (self *DataCenter) Handle_websocket_Close(ws *websocket.Conn) {
+func (self *DataCenter) Handle_websocket_Disconnected(ws *websocket.Conn) {
 	log.Println(fmt.Sprintf("断开连接:ws=%p", ws))
 }
 
@@ -31,7 +33,7 @@ func (self *DataCenter) Handle_websocket_Receive(ws *websocket.Conn, bytes []byt
 	//log.Println(fmt.Sprintf("收到消息:ws=%p,%v", ws, string(bytes)))
 }
 
-func (self *DataCenter) Handle_websocket_Operate_Fail(ws *websocket.Conn, operation string, err error) {
+func (self *DataCenter) Handle_websocket_Operation_Error(ws *websocket.Conn, operation string, err error) {
 	log.Println(fmt.Sprintf("操作失败:ws=%p,%v=>%v", ws, operation, err))
 }
 
@@ -44,7 +46,7 @@ func (self *DataCenter) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData 
 	if true {
 		var sendMessage string = "解析数据成功!"
 		if err := websocket.Message.Send(ws, sendMessage); err != nil {
-			self.Handle_websocket_Operate_Fail(ws, "Send", err)
+			self.Handle_websocket_Operation_Error(ws, "Send", err)
 		}
 	}
 }
