@@ -2,6 +2,7 @@ package MyHttpServer
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"reflect"
@@ -99,7 +100,9 @@ func (self *MyHttpServer) handler_Root_websocket(ws *websocket.Conn) {
 	for {
 		recvRawMessage = nil
 		if err = websocket.Message.Receive(ws, &recvRawMessage); err != nil {
-			self.business.Handle_WebSocket_Operation_Error(ws, "Receive", err)
+			if err != io.EOF {
+				self.business.Handle_WebSocket_Operation_Error(ws, "Receive", err)
+			}
 			return
 		}
 		self.business.Handle_WebSocket_Receive(ws, recvRawMessage)
