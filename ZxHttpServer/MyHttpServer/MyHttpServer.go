@@ -61,8 +61,8 @@ func (self *MyHttpServer) GetHttpServeMux() *http.ServeMux {
 }
 
 func (self *MyHttpServer) Init() {
-	self.GetHttpServeMux().HandleFunc("/", self.Root_http_handler)
-	self.GetHttpServeMux().Handle("/websocket", websocket.Handler(self.Root_websocket_handler))
+	self.GetHttpServeMux().HandleFunc("/", self.handler_Root_http)
+	self.GetHttpServeMux().Handle("/websocket", websocket.Handler(self.handler_Root_websocket))
 	//
 	for curType, curFun := range self.business.GetRegisterHandlerMap() {
 		if self.parser.RegisterHandler(curType, curFun) == false {
@@ -76,11 +76,11 @@ func (self *MyHttpServer) Run() {
 	self.httpServer.ListenAndServe()
 }
 
-func (self *MyHttpServer) Root_http_handler(http.ResponseWriter, *http.Request) {
-	fmt.Println("test_Root_http")
+func (self *MyHttpServer) handler_Root_http(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "function not implemented!")
 }
 
-func (self *MyHttpServer) Root_websocket_handler(ws *websocket.Conn) {
+func (self *MyHttpServer) handler_Root_websocket(ws *websocket.Conn) {
 	var err error = nil
 	var recvRawMessage []byte = nil
 

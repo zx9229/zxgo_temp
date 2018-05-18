@@ -14,5 +14,5 @@ func main() {
 	myWebServer := MyHttpServer.New_MyHttpServer(listenAddr, TxStruct.New_TxParser(), BusinessCenter.New_DataCenter())
 	myWebServer.Init()
 	myWebServer.Run()
-	fmt.Println("DONE.")
+	fmt.Println("will exit...")
 }
