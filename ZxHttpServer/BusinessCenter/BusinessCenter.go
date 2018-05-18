@@ -5,6 +5,8 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/zx9229/zxgo_temp/ZxHttpServer/MyHttpServer"
+
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/TxStruct"
 	"golang.org/x/net/websocket"
 )
@@ -21,19 +23,19 @@ func New_DataCenter() *DataCenter {
 	return newData
 }
 
-func (self *DataCenter) Handle_websocket_Connected(ws *websocket.Conn) {
+func (self *DataCenter) Handle_WebSocket_Connected(ws *websocket.Conn) {
 	log.Println(fmt.Sprintf("收到连接:ws=%p,RemoteAddr=%v", ws, ws.Request().RemoteAddr))
 }
 
-func (self *DataCenter) Handle_websocket_Disconnected(ws *websocket.Conn) {
+func (self *DataCenter) Handle_WebSocket_Disconnected(ws *websocket.Conn) {
 	log.Println(fmt.Sprintf("断开连接:ws=%p", ws))
 }
 
-func (self *DataCenter) Handle_websocket_Receive(ws *websocket.Conn, bytes []byte) {
+func (self *DataCenter) Handle_WebSocket_Receive(ws *websocket.Conn, bytes []byte) {
 	//log.Println(fmt.Sprintf("收到消息:ws=%p,%v", ws, string(bytes)))
 }
 
-func (self *DataCenter) Handle_websocket_Operation_Error(ws *websocket.Conn, operation string, err error) {
+func (self *DataCenter) Handle_WebSocket_Operation_Error(ws *websocket.Conn, operation string, err error) {
 	log.Println(fmt.Sprintf("操作失败:ws=%p,%v=>%v", ws, operation, err))
 }
 
@@ -42,7 +44,7 @@ func (self *DataCenter) Handle_Parse_Fail(ws *websocket.Conn, bytes []byte, obj 
 	if true {
 		var sendMessage string = "数据处理失败!"
 		if err = websocket.Message.Send(ws, sendMessage); err != nil {
-			self.Handle_websocket_Operation_Error(ws, "Send", err)
+			self.Handle_WebSocket_Operation_Error(ws, "Send", err)
 		}
 	}
 }
@@ -52,13 +54,13 @@ func (self *DataCenter) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData 
 	if true {
 		var sendMessage string = "解析数据成功!"
 		if err := websocket.Message.Send(ws, sendMessage); err != nil {
-			self.Handle_websocket_Operation_Error(ws, "Send", err)
+			self.Handle_WebSocket_Operation_Error(ws, "Send", err)
 		}
 	}
 }
 
-func (self *DataCenter) GetRegisterMap() map[reflect.Type]TxStruct.Handler {
-	mapData := make(map[reflect.Type]TxStruct.Handler)
+func (self *DataCenter) GetRegisterHandlerMap() map[reflect.Type]MyHttpServer.DataParserHandler {
+	mapData := make(map[reflect.Type]MyHttpServer.DataParserHandler)
 	//
 	mapData[reflect.ValueOf(TxStruct.ChatMessage{}).Type()] = self.Handle_Parse_OK_ChatMessage
 	//
