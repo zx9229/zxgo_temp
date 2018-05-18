@@ -1,4 +1,5 @@
 package TxStruct //通信结构体.
+import "reflect"
 
 type TxBaseData struct {
 	Type string
@@ -13,6 +14,10 @@ type RspMessage struct {
 	FailedId     map[int64]string
 	SucceedGroup map[int64]string
 	FailedGroup  map[int64]string
+}
+
+func (self *RspMessage) FillField_Type() {
+	self.Type = reflect.ValueOf(self).Type().Name()
 }
 
 //聊天消息
@@ -30,6 +35,10 @@ type ChatMessage struct {
 	Memo        string   //备注(预留字段)
 }
 
+func (self *ChatMessage) FillField_Type() {
+	self.Type = reflect.ValueOf(self).Type().Name()
+}
+
 //通知消息
 type PushMessage struct {
 	Type        string
@@ -42,6 +51,10 @@ type PushMessage struct {
 	GroupAlias  []string //接收组的别名列表
 	Message     string   //聊天消息内容
 	Memo        string   //备注(预留字段)
+}
+
+func (self *PushMessage) FillField_Type() {
+	self.Type = reflect.ValueOf(self).Type().Name()
 }
 
 //创建某用户(用户一旦创建,不可删除,只能禁用[为了数据唯一性]).

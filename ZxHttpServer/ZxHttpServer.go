@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/BusinessCenter"
@@ -21,6 +20,7 @@ type ZxHttpServer struct {
 
 func New_ZxHttpServer(listenAddr string) *ZxHttpServer {
 	var newData *ZxHttpServer = new(ZxHttpServer)
+	//
 	newData.httpServer = new(http.Server)
 	newData.httpServer.Addr = listenAddr
 	newData.httpServer.Handler = http.NewServeMux()
@@ -29,7 +29,6 @@ func New_ZxHttpServer(listenAddr string) *ZxHttpServer {
 	//
 	newData.business = BusinessCenter.New_DataCenter()
 	//
-	newData.parser.RegisterHandler(reflect.ValueOf(TxStruct.ChatMessage{}).Type(), newData.business.Handle_Parse_OK_ChatMessage)
 	return newData
 }
 
@@ -41,7 +40,12 @@ func (self *ZxHttpServer) Init() {
 	self.GetHttpServeMux().HandleFunc("/", self.test_Root_http)
 	self.GetHttpServeMux().Handle("/websocket", websocket.Handler(self.test_Root_websocket))
 	//
-
+	for k, v := range self.business.GetRegisterMap() {
+		if self.parser.RegisterHandler(k, v) == false {
+			panic(fmt.Sprintf("注册函数失败,%v,%v", k, v))
+		}
+	}
+	//
 }
 
 func (self *ZxHttpServer) Run() {
@@ -86,9 +90,9 @@ func (self *ZxHttpServer) test_Root_websocket(ws *websocket.Conn) {
 }
 
 func main() {
-	//ormData := TxStruct.New_OrmData()
-	xx := new(TxStruct.ChatMessage)
-	bb, _ := json.Marshal(xx)
+	objData := new(TxStruct.ChatMessage)
+	objData.FillField_Type()
+	bb, _ := json.Marshal(objData)
 	fmt.Println(string(bb))
 
 	var port int = 8080

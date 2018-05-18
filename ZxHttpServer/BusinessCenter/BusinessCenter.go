@@ -3,7 +3,9 @@ package BusinessCenter
 import (
 	"fmt"
 	"log"
+	"reflect"
 
+	"github.com/zx9229/zxgo_temp/ZxHttpServer/TxStruct"
 	"golang.org/x/net/websocket"
 )
 
@@ -45,4 +47,12 @@ func (self *DataCenter) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData 
 			self.Handle_websocket_Operate_Fail(ws, "Send", err)
 		}
 	}
+}
+
+func (self *DataCenter) GetRegisterMap() map[reflect.Type]TxStruct.Handler {
+	mapData := make(map[reflect.Type]TxStruct.Handler)
+
+	mapData[reflect.ValueOf(TxStruct.ChatMessage{}).Type()] = self.Handle_Parse_OK_ChatMessage
+
+	return mapData
 }
