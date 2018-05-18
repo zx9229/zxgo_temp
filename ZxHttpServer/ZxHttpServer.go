@@ -1,16 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 
+	"github.com/zx9229/zxgo_temp/ZxHttpServer/BusinessCenter"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer/TxStruct"
 	"golang.org/x/net/websocket"
 )
 
 type ZxHttpServer struct {
 	httpServer *http.Server
+	TmpData    *TxStruct.OrmData
+	center     *BusinessCenter.DataCenter
 }
 
 func New_ZxHttpServer(listenAddr string) *ZxHttpServer {
@@ -18,6 +24,12 @@ func New_ZxHttpServer(listenAddr string) *ZxHttpServer {
 	newData.httpServer = new(http.Server)
 	newData.httpServer.Addr = listenAddr
 	newData.httpServer.Handler = http.NewServeMux()
+	//
+	newData.TmpData = TxStruct.New_OrmData()
+	//
+	newData.center = BusinessCenter.New_DataCenter()
+	//
+	newData.TmpData.RegisterHandler(reflect.ValueOf(TxStruct.ChatMessage{}).Type(), newData.center.Handle_Parse_OK_ChatMessage)
 	return newData
 }
 
@@ -28,6 +40,8 @@ func (self *ZxHttpServer) GetHttpServeMux() *http.ServeMux {
 func (self *ZxHttpServer) Init() {
 	self.GetHttpServeMux().HandleFunc("/", self.test_Root_http)
 	self.GetHttpServeMux().Handle("/websocket", websocket.Handler(self.test_Root_websocket))
+	//
+
 }
 
 func (self *ZxHttpServer) Run() {
@@ -39,38 +53,44 @@ func (self *ZxHttpServer) test_Root_http(http.ResponseWriter, *http.Request) {
 }
 
 func (self *ZxHttpServer) test_Root_websocket(ws *websocket.Conn) {
-	fmt.Println(ws)
 	var err error = nil
 	var recvRawMessage []byte = nil
 
 	defer func() {
+		self.center.Handle_websocket_Close(ws)
 		if err = ws.Close(); err != nil {
 			log.Println(fmt.Sprintf("ws=%p,调用Close失败,err=%v", ws, err))
 		}
 	}()
-
-	log.Println(fmt.Sprintf("ws=%p,RemoteAddr=%v", ws, ws.Request().RemoteAddr))
+	self.center.Handle_websocket_Open(ws)
 
 	for {
 		recvRawMessage = nil
 		if err = websocket.Message.Receive(ws, &recvRawMessage); err != nil {
-			log.Println(fmt.Printf("ws=%p,调用Receive失败,err=%v", ws, err))
+			self.center.Handle_websocket_Operate_Fail(ws, "Receive", err)
 			return
 		}
+		self.center.Handle_websocket_Receive(ws, recvRawMessage)
 
-		var sendMessage string = "数据无法识别!"
-		message := string(recvRawMessage)
-		log.Println(message)
-
-		sendMessage = fmt.Sprintf("我收到了[%v]", message)
-
-		if err = websocket.Message.Send(ws, sendMessage); err != nil {
-			log.Println(fmt.Sprintf("ws=%p,调用Send失败,err=%v", ws, err))
+		//如果解析成功,会调用(TmpData)里面注册的对应的回调函数.
+		if _, _, err = self.TmpData.ParseByteSlice(ws, recvRawMessage); err != nil {
+			log.Println(err) //TODO:
+			if false {
+				var sendMessage string = "数据处理失败!"
+				if err = websocket.Message.Send(ws, sendMessage); err != nil {
+					log.Println(fmt.Sprintf("ws=%p,调用Send失败,err=%v", ws, err))
+				}
+			}
 		}
 	}
 }
 
 func main() {
+	//ormData := TxStruct.New_OrmData()
+	xx := new(TxStruct.ChatMessage)
+	bb, _ := json.Marshal(xx)
+	fmt.Println(string(bb))
+
 	var port int = 8080
 	listenAddr := fmt.Sprintf("localhost:%d", port)
 	zxWebServer := New_ZxHttpServer(listenAddr)
