@@ -72,8 +72,12 @@ func (self *MyHttpServer) Init() {
 	//
 }
 
-func (self *MyHttpServer) Run() {
-	self.httpServer.ListenAndServe()
+func (self *MyHttpServer) Run() error {
+	return self.httpServer.ListenAndServe()
+}
+
+func (self *MyHttpServer) RunTLS(certFile string, keyFile string) error {
+	return self.httpServer.ListenAndServeTLS(certFile, keyFile)
 }
 
 func (self *MyHttpServer) handler_Root_http(w http.ResponseWriter, r *http.Request) {

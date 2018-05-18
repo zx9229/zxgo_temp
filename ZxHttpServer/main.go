@@ -13,6 +13,16 @@ func main() {
 	listenAddr := fmt.Sprintf("localhost:%d", port)
 	myWebServer := MyHttpServer.New_MyHttpServer(listenAddr, TxStruct.New_TxParser(), BusinessCenter.New_DataCenter())
 	myWebServer.Init()
-	myWebServer.Run()
+
+	var err error
+	if true {
+		err = myWebServer.Run()
+	} else {
+		//go run C:\go\src\crypto\tls\generate_cert.go --host localhost
+		certFile := "cert.pem"
+		keyFile := "key.pem"
+		err = myWebServer.RunTLS(certFile, keyFile)
+	}
+	fmt.Println(err)
 	fmt.Println("will exit...")
 }
