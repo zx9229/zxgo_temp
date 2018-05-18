@@ -11,21 +11,21 @@ import (
 
 type Handler func(ws *websocket.Conn, i interface{})
 
-type innerPair struct {
+type TxParser struct {
+	mapStr2Data map[string]*onePair
+}
+
+type onePair struct {
 	refType reflect.Type //类型.
 	handler Handler      //回调函数.
 }
 
-type TxParser struct {
-	mapStr2Data map[string]*innerPair
-}
-
 func New_TxParser() *TxParser {
 	newData := new(TxParser)
-	newData.mapStr2Data = make(map[string]*innerPair)
+	newData.mapStr2Data = make(map[string]*onePair)
 
 	for k, v := range initMap() {
-		newData.mapStr2Data[k] = &innerPair{v, nil}
+		newData.mapStr2Data[k] = &onePair{v, nil}
 	}
 
 	return newData
@@ -65,13 +65,13 @@ func (self *TxParser) ParseByteSlice(ws *websocket.Conn, jsonByte []byte) (objDa
 	cbOk = false
 	err = nil
 
-	var baseData *BaseTxData = &BaseTxData{}
+	var baseData *TxBaseData = &TxBaseData{}
 	if err = json.Unmarshal(jsonByte, baseData); err != nil {
 		return
 	}
 
 	var ok bool
-	var matchedData *innerPair
+	var matchedData *onePair
 	if matchedData, ok = self.mapStr2Data[baseData.Type]; !ok {
 		err = errors.New("根据字符串找不到对应的类型")
 		return

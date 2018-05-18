@@ -1,6 +1,6 @@
 package TxStruct //通信结构体.
 
-type BaseTxData struct {
+type TxBaseData struct {
 	Type string
 }
 
