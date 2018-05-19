@@ -1,10 +1,13 @@
 package MyHttpServer
 
 import (
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"reflect"
 
 	"golang.org/x/net/websocket"
@@ -63,6 +66,7 @@ func (self *MyHttpServer) GetHttpServeMux() *http.ServeMux {
 
 func (self *MyHttpServer) Init() {
 	self.GetHttpServeMux().HandleFunc("/", self.handler_Root_http)
+	self.GetHttpServeMux().HandleFunc("/TxStruct", self.handler_http_Root_TxStruct)
 	self.GetHttpServeMux().Handle("/websocket", websocket.Handler(self.handler_Root_websocket))
 	//
 	for curType, curFun := range self.business.GetRegisterHandlerMap() {
@@ -82,7 +86,60 @@ func (self *MyHttpServer) RunTLS(certFile string, keyFile string) error {
 }
 
 func (self *MyHttpServer) handler_Root_http(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "function not implemented!")
+	sliceTypeName := make([]string, 0)
+	for curType, _ := range self.business.GetRegisterHandlerMap() {
+		sliceTypeName = append(sliceTypeName, curType.Name())
+	}
+
+	if t, err := template.ParseFiles("template/WebSocket.html"); err != nil {
+		fmt.Fprintf(w, "%v", err)
+	} else {
+		if err = t.Execute(w, sliceTypeName); err != nil {
+			fmt.Fprintf(w, "%v", err)
+		}
+	}
+}
+
+func (self *MyHttpServer) handler_http_Root_TxStruct(w http.ResponseWriter, r *http.Request) {
+	var typeName string
+	if queryForm, err := url.ParseQuery(r.URL.RawQuery); err != nil {
+		fmt.Fprintf(w, "解析GET参数报错%v", err)
+		return
+	} else {
+		if typeNameSlice, ok := queryForm["Type"]; !ok {
+			fmt.Fprintf(w, "解析GET参数没有Type")
+			return
+		} else {
+			typeName = typeNameSlice[0]
+		}
+	}
+
+	var curType reflect.Type
+	for tmpType := range self.business.GetRegisterHandlerMap() {
+		if tmpType.Name() == typeName {
+			curType = tmpType
+			break
+		}
+	}
+	if curType == nil {
+		fmt.Fprintf(w, "找不到名字为%s的类型", typeName)
+		return
+	}
+
+	var err error
+	jsonByte := []byte(fmt.Sprintf(`{"Type":"%s"}`, typeName))
+	objData := reflect.New(curType).Interface()
+	if err = json.Unmarshal(jsonByte, objData); err != nil {
+		fmt.Fprintf(w, "内部逻辑出错%v", err)
+		return
+	}
+
+	if jsonByte, err = json.Marshal(objData); err != nil {
+		fmt.Fprintf(w, "内部逻辑出错%v", err)
+		return
+	}
+
+	fmt.Fprintf(w, "%s", string(jsonByte))
 }
 
 func (self *MyHttpServer) handler_Root_websocket(ws *websocket.Conn) {
