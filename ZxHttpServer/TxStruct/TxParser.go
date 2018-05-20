@@ -6,32 +6,32 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/zx9229/zxgo_temp/ZxHttpServer/MyHttpServer"
-
 	"golang.org/x/net/websocket"
 )
+
+type TxParserHandler func(ws *websocket.Conn, i interface{})
 
 type TxParser struct {
 	mapStr2Data map[string]*onePair
 }
 
 type onePair struct {
-	refType reflect.Type                   //类型.
-	handler MyHttpServer.DataParserHandler //回调函数.
+	refType reflect.Type    //类型.
+	handler TxParserHandler //回调函数.
 }
 
 func New_TxParser() *TxParser {
 	newData := new(TxParser)
 	newData.mapStr2Data = make(map[string]*onePair)
 
-	for k, v := range initMap() {
+	for k, v := range CalcMapStr2Type() {
 		newData.mapStr2Data[k] = &onePair{v, nil}
 	}
 
 	return newData
 }
 
-func initMap() map[string]reflect.Type {
+func CalcMapStr2Type() map[string]reflect.Type {
 	slice_ := make([]interface{}, 0)
 	slice_ = append(slice_, RspMessage{})
 	slice_ = append(slice_, ChatMessage{})
@@ -45,7 +45,7 @@ func initMap() map[string]reflect.Type {
 	return cacheData
 }
 
-func (self *TxParser) RegisterHandler(curType reflect.Type, curFun MyHttpServer.DataParserHandler) bool {
+func (self *TxParser) RegisterHandler(curType reflect.Type, curFun TxParserHandler) bool {
 	for _, vData := range self.mapStr2Data {
 		if vData.refType == curType {
 			vData.handler = curFun

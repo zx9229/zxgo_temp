@@ -1,28 +1,46 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 
-	"github.com/zx9229/zxgo_temp/ZxHttpServer/BusinessCenter"
-	"github.com/zx9229/zxgo_temp/ZxHttpServer/MyHttpServer"
-	"github.com/zx9229/zxgo_temp/ZxHttpServer/TxStruct"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer/MyService"
 )
 
+type ConfigData struct {
+	Host string
+	Port int
+}
+
 func main() {
-	var port int = 8080
-	listenAddr := fmt.Sprintf("localhost:%d", port)
-	myWebServer := MyHttpServer.New_MyHttpServer(listenAddr, TxStruct.New_TxParser(), BusinessCenter.New_DataCenter())
-	myWebServer.Init()
+	var cfgData ConfigData = ConfigData{}
+	var config_filename string = "./config.json"
+	if content, err := ioutil.ReadFile(config_filename); err != nil && err != io.EOF {
+		log.Println(fmt.Sprintf("读取配置文件出错: %v", err))
+		os.Exit(1)
+	} else {
+		if err := json.Unmarshal(content, &cfgData); err != nil {
+			log.Println(fmt.Sprintf("解析配置文件出错: %v", err))
+			os.Exit(1)
+		}
+	}
+
+	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
+	myWebService := MyService.New_MyService(listenAddr)
 
 	var err error
 	if true {
-		err = myWebServer.Run()
+		err = myWebService.Run()
 	} else {
 		//go run C:\go\src\crypto\tls\generate_cert.go --host localhost
 		certFile := "cert.pem"
 		keyFile := "key.pem"
-		err = myWebServer.RunTLS(certFile, keyFile)
+		err = myWebService.RunTLS(certFile, keyFile)
 	}
-	fmt.Println(err)
-	fmt.Println("will exit...")
+	log.Println(err)
+	log.Println("will exit...")
 }
