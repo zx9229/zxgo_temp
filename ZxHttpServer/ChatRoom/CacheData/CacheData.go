@@ -1,6 +1,7 @@
 package CacheData
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -51,26 +52,50 @@ func myInSlice(dataItem int64, dataSlice []int64) bool {
 	return false
 }
 
-type CacheData struct {
-	inner *InnerCacheData
-}
-
 type InnerCacheData struct { //内存中的缓存数据.
 	AllUser   map[int64]*MyStruct.UserData  //所有的用户数据.
 	AllGroup  map[int64]*MyStruct.GroupData //所有的组数据.
 	MapRowIdx map[string]int64              //以Id递增的表,缓存了它的序号.
 }
 
-func New_InnerCacheData() *InnerCacheData {
-	newData := new(InnerCacheData)
+func new_InnerCacheData() *InnerCacheData {
+	curData := new(InnerCacheData)
+	//
+	curData.AllUser = make(map[int64]*MyStruct.UserData)
+	curData.AllGroup = make(map[int64]*MyStruct.GroupData)
+	curData.MapRowIdx = make(map[string]int64)
+	curData.MapRowIdx[TableName_PushRow()] = 0
+	curData.MapRowIdx[TableName_ChatRow()] = 0
+	//
+	return curData
+}
 
-	newData.AllUser = make(map[int64]*MyStruct.UserData)
-	newData.AllGroup = make(map[int64]*MyStruct.GroupData)
-	newData.MapRowIdx = make(map[string]int64)
-	newData.MapRowIdx[TableName_PushRow()] = 0
-	newData.MapRowIdx[TableName_ChatRow()] = 0
+type CacheData struct {
+	inner *InnerCacheData
+}
 
-	return newData
+func New_CacheData() *CacheData {
+	curData := new(CacheData)
+	curData.inner = new_InnerCacheData()
+	return curData
+}
+
+func (self *CacheData) FromJson(jsonStr string) error {
+	tmpInner := new(InnerCacheData)
+	if err := json.Unmarshal([]byte(jsonStr), tmpInner); err != nil {
+		return err
+	}
+	self.inner = tmpInner
+	return nil
+}
+
+func (self *CacheData) ToJson() (jsonStr string, err error) {
+	var jsonByte []byte
+	if jsonByte, err = json.Marshal(self.inner); err != nil {
+		return
+	}
+	jsonStr = string(jsonByte)
+	return
 }
 
 func (self *InnerCacheData) checkFriends(uId1 int64, uId2 int64) error {
