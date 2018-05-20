@@ -96,8 +96,8 @@ func (self *ChatRoom) createTablesAndSync2() error {
 		beans = append(beans, new(MyStruct.KeyValue))
 		beans = append(beans, new(MyStruct.UserData))
 		beans = append(beans, new(MyStruct.GroupData))
-		beans = append(beans, new(MyStruct.PushMessageRaw))
-		beans = append(beans, new(MyStruct.ChatMessageRaw))
+		beans = append(beans, &MyStruct.PushMessageRaw{MyTn: CacheData.TableName_PushRow()})
+		beans = append(beans, &MyStruct.ChatMessageRaw{MyTn: CacheData.TableName_ChatRow()})
 		//for _, tablename := range tablenameSlice {
 		//	cm := new(ChatMessage)
 		//	cm.MyTn = tablename

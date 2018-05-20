@@ -55,6 +55,13 @@ type PushMessageRaw struct {
 	Memo     string    //备注(预留字段)
 }
 
+func (self *PushMessageRaw) TableName() string {
+	if len(self.MyTn) <= 0 {
+		panic(fmt.Sprintf("字段的值=%v,请正确赋值", self.MyTn))
+	}
+	return self.MyTn
+}
+
 //原始聊天消息(服务器刚刚接收到的最原始消息)
 type ChatMessageRaw struct {
 	MyTn     string    `xorm:"-"` //(我的表名)这个Field将不进行字段映射(该结构体的tablename可以不自定义,我为了统一,把它自定义了)
@@ -65,6 +72,13 @@ type ChatMessageRaw struct {
 	GroupId  []int64   //接收组的ID号列表
 	Message  string    //聊天消息内容
 	Memo     string    //备注(预留字段)
+}
+
+func (self *ChatMessageRaw) TableName() string {
+	if len(self.MyTn) <= 0 {
+		panic(fmt.Sprintf("字段的值=%v,请正确赋值", self.MyTn))
+	}
+	return self.MyTn
 }
 
 //整理后的聊天消息(最终呈现给用户的聊天消息)
