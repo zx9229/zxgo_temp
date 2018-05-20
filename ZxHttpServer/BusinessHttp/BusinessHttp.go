@@ -38,7 +38,7 @@ func (self *BusinessHttp) Handler_ROOT(w http.ResponseWriter, r *http.Request) {
 		sliceTypeName = append(sliceTypeName, typeName)
 	}
 
-	if t, err := template.ParseFiles("template/WebSocket.html"); err != nil {
+	if t, err := template.ParseFiles("./files/WebSocket.html"); err != nil {
 		fmt.Fprintf(w, "%v", err)
 	} else {
 		if err = t.Execute(w, sliceTypeName); err != nil {

@@ -1,6 +1,8 @@
 package MyService
 
 import (
+	"net/http"
+
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/BusinessHttp"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/BusinessWebSocket"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/SimpleHttpServer"
@@ -31,6 +33,9 @@ func (self *MyService) Init() {
 	for tmpType, tmpFun := range self.serviceWebSocket.GetRegisterHandlerMap() {
 		self.parser.RegisterHandler(tmpType, tmpFun)
 	}
+	self.httpServer.GetHttpServeMux().HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, r.URL.Path[1:])
+	})
 }
 
 func (self *MyService) Run() error {
