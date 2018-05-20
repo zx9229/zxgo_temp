@@ -4,7 +4,6 @@
 <head>
     <!-- 文件源自 https://code.jquery.com/jquery/ 的 https://code.jquery.com/jquery-1.11.3.min.js -->
     <script src="/files/jquery/jquery-1.11.3.min.js"></script>
-    <!--script src="https://code.jquery.com/jquery-1.11.3.min.js"></script-->
     <script type="text/javascript">
 
         function myIsNull(tmp) {
@@ -94,9 +93,7 @@
         }
 
         function clearRecvTextArea() {
-            var jsonStr = "{\"Type\":\"ChatMessage\",\"inn\":2}"
-
-            document.getElementById('txt_recv').value = JSON.stringify(JSON.parse(jsonStr), null, 2);;
+            document.getElementById('txt_recv').value = "";
         }
 
         function clearElseTextArea() {
@@ -110,18 +107,13 @@
         function queryTxStructInfo() {
             var typeName = document.getElementById('txyz').value;
             var url = "/TxStruct?Type=" + typeName;
-            //alert('张荀:2222222222');
             $.get(url, function (data, status, xhr) {
                 try {
-                    document.getElementById('txt_recv').value = JSON.stringify(JSON.parse(data), null, 2);
+                    document.getElementById('txt_send').value = JSON.stringify(JSON.parse(data), null, 2);
                 } catch (e) {
-                    document.getElementById('txt_recv').value = data;
+                    document.getElementById('txt_send').value = data;
                 }
             });
-        }
-
-        function clearData() {
-            document.getElementById('txyz').value = "";
         }
     </script>
 </head>
@@ -177,7 +169,7 @@
         <option value="{{.}}" /> {{end}}
     </datalist>
     <button onclick="queryTxStructInfo()">查询</button>
-    <button onclick="clearData()">清空</button>
+    <button onclick="document.getElementById('txyz').value = ''; ">清空</button>
 </body>
 
 </html>

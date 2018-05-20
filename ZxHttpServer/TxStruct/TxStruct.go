@@ -5,21 +5,6 @@ type TxBaseData struct {
 	Type string
 }
 
-type RspMessage struct {
-	Type         string
-	TransmitId   int64 //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
-	Code         int
-	Message      string
-	SucceedId    map[int64]string
-	FailedId     map[int64]string
-	SucceedGroup map[int64]string
-	FailedGroup  map[int64]string
-}
-
-func (self *RspMessage) FillField_Type() {
-	self.Type = reflect.ValueOf(*self).Type().Name()
-}
-
 //聊天消息
 //将RecverId和RecverAlias取并集,这个聊天消息会发给这个并集里的成员;GroupId和GroupAlias同理.
 type ChatMessage struct {
@@ -39,6 +24,22 @@ func (self *ChatMessage) FillField_Type() {
 	self.Type = reflect.ValueOf(*self).Type().Name()
 }
 
+// 聊天消息,响应
+type ChatMessageRsp struct {
+	Type         string           //类型的名字
+	TransmitId   int64            //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
+	Code         int              //返回值
+	Message      string           //返回的详细信息
+	SucceedId    map[int64]string //[key]是[id],[value]是[alias]
+	FailedId     map[int64]string //[key]是[id],[value]是[alias]
+	SucceedGroup map[int64]string //[key]是[id],[value]是[alias]
+	FailedGroup  map[int64]string //[key]是[id],[value]是[alias]
+}
+
+func (self *ChatMessageRsp) FillField_Type() {
+	self.Type = reflect.ValueOf(*self).Type().Name()
+}
+
 //通知消息
 type PushMessage struct {
 	Type        string
@@ -54,6 +55,21 @@ type PushMessage struct {
 }
 
 func (self *PushMessage) FillField_Type() {
+	self.Type = reflect.ValueOf(*self).Type().Name()
+}
+
+type PushMessageRsp struct {
+	Type         string           //类型的名字
+	TransmitId   int64            //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
+	Code         int              //返回值
+	Message      string           //返回的详细信息
+	SucceedId    map[int64]string //[key]是[id],[value]是[alias]
+	FailedId     map[int64]string //[key]是[id],[value]是[alias]
+	SucceedGroup map[int64]string //[key]是[id],[value]是[alias]
+	FailedGroup  map[int64]string //[key]是[id],[value]是[alias]
+}
+
+func (self *PushMessageRsp) FillField_Type() {
 	self.Type = reflect.ValueOf(*self).Type().Name()
 }
 

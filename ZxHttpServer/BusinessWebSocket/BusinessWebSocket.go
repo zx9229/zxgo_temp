@@ -27,6 +27,22 @@ func New_BusinessWebSocket() *BusinessWebSocket {
 	return curData
 }
 
+func (self *BusinessWebSocket) _websocket_Message_Send(ws *websocket.Conn, v interface{}) {
+	if err := websocket.Message.Send(ws, v); err != nil {
+		self.Handle_WebSocket_Operation_Error(ws, "Send", err)
+	}
+}
+
+func (self *BusinessWebSocket) _websocket_Message_Receive(ws *websocket.Conn, v interface{}) error {
+	var err error
+	if err = websocket.Message.Receive(ws, v); err != nil {
+		if err != io.EOF {
+			self.Handle_WebSocket_Operation_Error(ws, "Receive", err)
+		}
+	}
+	return err
+}
+
 func (self *BusinessWebSocket) Handler_websocket(ws *websocket.Conn) {
 	var err error = nil
 	var recvRawMessage []byte = nil
@@ -41,15 +57,12 @@ func (self *BusinessWebSocket) Handler_websocket(ws *websocket.Conn) {
 
 	for {
 		recvRawMessage = nil
-		if err = websocket.Message.Receive(ws, &recvRawMessage); err != nil {
-			if err != io.EOF {
-				self.Handle_WebSocket_Operation_Error(ws, "Receive", err)
-			}
+		if err = self._websocket_Message_Receive(ws, &recvRawMessage); err != nil {
 			return
 		}
 		self.Handle_WebSocket_Receive(ws, recvRawMessage)
 
-		//如果解析成功,会调用(TmpData)里面注册的对应的回调函数.
+		//如果解析成功,会调用(self.parser)里面注册的对应的回调函数.
 		if obj, cbOk, err2 := self.parser.ParseByteSlice(ws, recvRawMessage); err2 != nil {
 			err = err2
 			self.Handle_Parse_Fail(ws, recvRawMessage, obj, cbOk, err2)
@@ -77,19 +90,22 @@ func (self *BusinessWebSocket) Handle_Parse_Fail(ws *websocket.Conn, bytes []byt
 	log.Println(fmt.Sprintf("解析失败:ws=[%p],%v,%v", ws, string(bytes), err))
 	if true {
 		var sendMessage string = "数据处理失败!"
-		if err = websocket.Message.Send(ws, sendMessage); err != nil {
-			self.Handle_WebSocket_Operation_Error(ws, "Send", err)
-		}
+		self._websocket_Message_Send(ws, sendMessage)
 	}
 }
 
 func (self *BusinessWebSocket) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData interface{}) {
 	log.Println(fmt.Sprintf("解析成功:ws=[%p],%v", ws, objData))
 	if true {
-		var sendMessage string = "解析数据成功!"
-		if err := websocket.Message.Send(ws, sendMessage); err != nil {
-			self.Handle_WebSocket_Operation_Error(ws, "Send", err)
-		}
+		var sendMessage string = "解析数据成功!" + (objData.(*TxStruct.ChatMessage)).Type
+		self._websocket_Message_Send(ws, sendMessage)
+	}
+}
+func (self *BusinessWebSocket) Handle_Parse_OK_PushMessage(ws *websocket.Conn, objData interface{}) {
+	log.Println(fmt.Sprintf("解析成功:ws=[%p],%v", ws, objData))
+	if true {
+		var sendMessage string = "解析数据成功!" + (objData.(*TxStruct.PushMessage)).Type
+		self._websocket_Message_Send(ws, sendMessage)
 	}
 }
 
@@ -97,6 +113,7 @@ func (self *BusinessWebSocket) GetRegisterHandlerMap() map[reflect.Type]TxStruct
 	mapData := make(map[reflect.Type]TxStruct.TxParserHandler)
 	//
 	mapData[reflect.ValueOf(TxStruct.ChatMessage{}).Type()] = self.Handle_Parse_OK_ChatMessage
+	mapData[reflect.ValueOf(TxStruct.PushMessage{}).Type()] = self.Handle_Parse_OK_PushMessage
 	//
 	return mapData
 }
