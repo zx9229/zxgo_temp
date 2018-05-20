@@ -85,8 +85,9 @@ func (self *ChatMessage) TableName() string {
 	return self.MyTn
 }
 
-func InnerNewUserData() *UserData {
+func New_UserData() *UserData { //因为这个结构体里面有好些map,所以不建议直接new,建议调用它进行创建.
 	newData := &UserData{}
+	//
 	newData.Id = 0
 	newData.Alias = ""
 	newData.Password = ""
@@ -96,5 +97,6 @@ func InnerNewUserData() *UserData {
 	newData.CreateTime = time.Now()
 	newData.UpdateTime = time.Now()
 	newData.Memo = ""
+	//
 	return newData
 }

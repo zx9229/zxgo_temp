@@ -1,7 +1,6 @@
 package MyChat
 
 import (
-	"encoding/json"
 	"errors"
 	"reflect"
 	"sync"
@@ -19,11 +18,10 @@ import (
 
 type MyChat struct {
 	engine     *xorm.Engine
-	rwMutex    *sync.Mutex
-	cache      *CacheData.InnerCacheData
+	mutex      *sync.Mutex
+	cache      *CacheData.CacheData
 	allKV      map[string]MyStruct.KeyValue
 	chanPmr    chan *MyStruct.PushMessageRaw //存数据库专用
-	chanPm     chan *MyStruct.PushMessage    //存数据库专用
 	chanCmr    chan *MyStruct.ChatMessageRaw //存数据库专用
 	chanCm     chan *MyStruct.ChatMessage    //存数据库专用
 	mapSession map[*websocket.Conn]string
@@ -33,11 +31,10 @@ func New_MyChat() *MyChat {
 	newData := new(MyChat)
 
 	newData.engine = nil
-	newData.rwMutex = new(sync.Mutex)
+	newData.mutex = new(sync.Mutex)
 	newData.cache = nil
 	newData.allKV = make(map[string]MyStruct.KeyValue)
 	newData.chanPmr = make(chan *MyStruct.PushMessageRaw, 1024)
-	newData.chanPm = make(chan *MyStruct.PushMessage, 1024)
 	newData.chanCmr = make(chan *MyStruct.ChatMessageRaw, 1024)
 	newData.chanCm = make(chan *MyStruct.ChatMessage, 1024)
 	newData.mapSession = make(map[*websocket.Conn]string)
@@ -100,7 +97,6 @@ func (self *MyChat) createTablesAndSync2() error {
 		beans = append(beans, new(MyStruct.UserData))
 		beans = append(beans, new(MyStruct.GroupData))
 		beans = append(beans, new(MyStruct.PushMessageRaw))
-		beans = append(beans, new(MyStruct.PushMessage))
 		beans = append(beans, new(MyStruct.ChatMessageRaw))
 		//for _, tablename := range tablenameSlice {
 		//	cm := new(ChatMessage)
@@ -121,8 +117,8 @@ func (self *MyChat) createTablesAndSync2() error {
 }
 
 func (self *MyChat) loadDataFromDbWithLock() error {
-	self.rwMutex.Lock()
-	defer self.rwMutex.Unlock()
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
 	return self.loadDataFromDbWithoutLock()
 }
 
@@ -144,15 +140,15 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 			self.allKV[kv.Key] = kv
 		}
 
-		var tmpCache *CacheData.InnerCacheData = new(CacheData.InnerCacheData) //此时(self.cache == nil)是true.
+		var tmpCache *CacheData.CacheData = new(CacheData.CacheData) //此时(self.cache == nil)是true.
 		if kvData, ok := self.allKV[reflect.TypeOf(tmpCache).Name()]; ok {
-			if err = json.Unmarshal([]byte(kvData.Value), tmpCache); err != nil {
+			if err = tmpCache.FromJson(kvData.Value); err != nil {
 				break
 			} else {
 				self.cache = tmpCache
 			}
 		} else {
-			self.cache = CacheData.New_InnerCacheData(self.engine)
+			self.cache = CacheData.New_CacheData()
 		}
 	}
 
@@ -160,8 +156,8 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 }
 
 func (self *MyChat) saveDataToDbWithLock() error {
-	self.rwMutex.Lock()
-	defer self.rwMutex.Unlock()
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
 	return self.saveDataToDbWithoutLock()
 }
 
@@ -171,14 +167,14 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 
 	for _ = range "1" {
 
-		var jsonByte []byte
-		if jsonByte, err = json.Marshal(self.cache); err != nil {
+		var jsonStr string
+		if jsonStr, err = self.cache.ToJson(); err != nil {
 			break
 		}
 
 		kvData := MyStruct.KeyValue{}
 		kvData.Key = reflect.TypeOf(*(self.cache)).Name()
-		kvData.Value = string(jsonByte)
+		kvData.Value = jsonStr
 		self.allKV[kvData.Key] = kvData
 
 		var errWhenUpdate bool = false
@@ -197,13 +193,15 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 	return err
 }
 
-func (self *MyChat) addUser(alias string, password string) error {
+func (self *MyChat) AddUser(alias string, password string) error {
 	var err error
-	if err = self.cache.addUser(alias, password); err != nil {
-		return err
-	}
-	if err = self.saveDataToDbWithLock(); err != nil {
-		return err
+	for _ = range "1" {
+		if err = self.cache.AddUser(alias, password); err != nil {
+			break
+		}
+		if err = self.saveDataToDbWithLock(); err != nil {
+			break
+		}
 	}
 	return err
 }
@@ -215,15 +213,13 @@ func (self *MyChat) AddFriends(fId1 int64, fId2 int64) error {
 			break
 		}
 		cm := new(MyStruct.ChatMessage)
-		cm.MyTn = calcTableNameFriend(fId1, fId2)
+		cm.MyTn = CacheData.TableName_Friend(fId1, fId2)
 		if err = self.engine.CreateTables(cm); err != nil { //应该是:只要存在这个tablename,就跳过它.
 			break
 		}
-
 		if err = self.saveDataToDbWithLock(); err != nil {
 			break
 		}
 	}
-
 	return err
 }

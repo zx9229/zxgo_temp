@@ -318,7 +318,7 @@ func (self *InnerCacheData) calcMaxUserId() int64 {
 	return maxId
 }
 
-func (self *CacheData) addUser(alias string, password string) error {
+func (self *CacheData) AddUser(alias string, password string) error {
 	var err error
 	if len(alias) == 0 {
 		err = errors.New("要创建的用户的alias字符串为空")
@@ -330,7 +330,7 @@ func (self *CacheData) addUser(alias string, password string) error {
 		return err
 	}
 
-	newUd := MyStruct.InnerNewUserData()
+	newUd := MyStruct.New_UserData()
 	newUd.Id = self.inner.calcMaxUserId() + 1
 	newUd.Alias = alias
 	newUd.Password = password
