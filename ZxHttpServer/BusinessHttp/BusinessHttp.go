@@ -80,26 +80,14 @@ func (self *BusinessHttp) fromTypeNameToJsonStr(typeName string) (jsonStr string
 		curType = tmpType
 	}
 
-	jsonByte := make([]byte, 0)
+	var jsonByte []byte
 	//构造一个"最小可用的通信json串"
-	if err = json.Unmarshal(jsonByte, TxStruct.TxBaseData{Type: typeName}); err != nil {
+	if jsonByte, err = json.Marshal(&TxStruct.TxBaseData{Type: typeName}); err != nil {
 		return
 	}
 
 	objData := reflect.New(curType).Interface()
 	//将"最小可用的通信json串"转成"目标结对象",此时,如果目标对象里面含有slice或map等数据成员的话,它们的值是nil
-	if err = json.Unmarshal(jsonByte, objData); err != nil {
-		return
-	}
-
-	//将"目标结对象"转成"目标对象的json串"
-	if jsonByte, err = json.Marshal(objData); err != nil {
-		return
-	}
-
-	jsonByte = make([]byte, 0)
-	objData = reflect.New(curType).Interface()
-	//将"目标对象的json串"转成"目标结对象",此时,如果目标对象里面含有slice或map等数据成员的话,它们的值是空的.
 	if err = json.Unmarshal(jsonByte, objData); err != nil {
 		return
 	}

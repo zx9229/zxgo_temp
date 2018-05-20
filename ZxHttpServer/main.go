@@ -31,6 +31,7 @@ func main() {
 
 	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
 	myWebService := MyService.New_MyService(listenAddr)
+	myWebService.Init()
 
 	var err error
 	if true {
