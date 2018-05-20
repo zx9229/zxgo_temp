@@ -16,11 +16,19 @@ func calcTablenameXorm(engine *xorm.Engine, bean interface{}) string {
 	return tbName
 }
 
-func calcTableNameGroup(groupId int64) string {
+func TableName_PushRow() string {
+	return "t_push_row"
+}
+
+func TableName_ChatRow() string {
+	return "t_chat_row"
+}
+
+func TableName_Group(groupId int64) string {
 	return fmt.Sprintf("t_g_%v", groupId)
 }
 
-func calcTableNameFriend(userId1 int64, userId2 int64) string {
+func TableName_Friend(userId1 int64, userId2 int64) string {
 	var minVal, maxVal int64
 	if userId1 < userId2 {
 		minVal = userId1
@@ -32,14 +40,6 @@ func calcTableNameFriend(userId1 int64, userId2 int64) string {
 	return fmt.Sprintf("t_f_%v_%v", minVal, maxVal)
 }
 
-func calcTableNameChatRow() string {
-	return "t_chat_row"
-}
-
-func calcTableNamePushRow() string {
-	return "t_push_row"
-}
-
 func myInSlice(dataItem int64, dataSlice []int64) bool {
 	if dataSlice != nil {
 		for _, element := range dataSlice {
@@ -49,6 +49,10 @@ func myInSlice(dataItem int64, dataSlice []int64) bool {
 		}
 	}
 	return false
+}
+
+type CacheData struct {
+	inner *InnerCacheData
 }
 
 type InnerCacheData struct { //内存中的缓存数据.
@@ -63,8 +67,8 @@ func New_InnerCacheData() *InnerCacheData {
 	newData.AllUser = make(map[int64]*MyStruct.UserData)
 	newData.AllGroup = make(map[int64]*MyStruct.GroupData)
 	newData.MapRowIdx = make(map[string]int64)
-	newData.MapRowIdx[calcTableNamePushRow()] = 0
-	newData.MapRowIdx[calcTableNameChatRow()] = 0
+	newData.MapRowIdx[TableName_PushRow()] = 0
+	newData.MapRowIdx[TableName_ChatRow()] = 0
 
 	return newData
 }
@@ -86,7 +90,7 @@ func (self *InnerCacheData) checkFriends(uId1 int64, uId2 int64) error {
 		err = errors.New(fmt.Sprintf("找不到id=%v的用户", uId2))
 		return err
 	}
-	curTablename := calcTableNameFriend(uId1, uId2)
+	curTablename := TableName_Friend(uId1, uId2)
 	if curLastRowIdx, ok = self.MapRowIdx[curTablename]; !ok {
 		err = errors.New(fmt.Sprintf("找不到%v的数据库表", curTablename))
 		return err
@@ -157,7 +161,7 @@ func (self *InnerCacheData) checkGroupMember(uId int64, gId int64) error {
 		err = errors.New(fmt.Sprintf("找不到groupId=%v的组", gId))
 		return err
 	}
-	curTablename := calcTableNameGroup(gId)
+	curTablename := TableName_Group(gId)
 	if curLastRowIdx, ok = self.MapRowIdx[curTablename]; !ok {
 		err = errors.New(fmt.Sprintf("找不到名为%v的数据库表", curTablename))
 		return err
@@ -183,8 +187,8 @@ func (self *InnerCacheData) check() error {
 
 	var curLastRowIndexNotice int64
 	var ok bool
-	if curLastRowIndexNotice, ok = self.MapRowIdx[calcTableNamePushRow()]; !ok {
-		err = errors.New(fmt.Sprintf("找不到%v的数据库表", calcTableNamePushRow()))
+	if curLastRowIndexNotice, ok = self.MapRowIdx[TableName_PushRow()]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", TableName_PushRow()))
 		return err
 	}
 
@@ -213,7 +217,7 @@ func (self *InnerCacheData) check() error {
 			}
 		}
 		if ud.NoticePos < 0 || curLastRowIndexNotice < 0 || curLastRowIndexNotice < ud.NoticePos {
-			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", calcTableNamePushRow(), curLastRowIndexNotice, ud.Id, ud.NoticePos))
+			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", TableName_PushRow(), curLastRowIndexNotice, ud.Id, ud.NoticePos))
 			return err
 		}
 	}
@@ -326,7 +330,7 @@ func (self *InnerCacheData) AddFriends(fId1 int64, fId2 int64) error {
 	} else {
 		ud1.FriendPos[ud2.Id] = 0
 		ud2.FriendPos[ud1.Id] = 0
-		self.MapRowIdx[calcTableNameFriend(ud1.Id, ud2.Id)] = 0
+		self.MapRowIdx[TableName_Friend(ud1.Id, ud2.Id)] = 0
 		if err = self.check(); err != nil {
 			panic(err)
 		}
