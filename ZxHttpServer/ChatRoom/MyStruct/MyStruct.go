@@ -45,57 +45,37 @@ type GroupData struct {
 
 //原始通知消息(服务器刚刚接收到的最原始消息)
 type PushMessageRaw struct {
-	Id          int64     `xorm:"notnull pk autoincr"`
-	Dttm        time.Time `xorm:"updated"`
-	SenderId    int64     //发送者的ID号
-	SenderAlias string    //发送者的别名
-	RecverId    []int64   //接收者的ID号列表
-	RecverAlias []string  //接收者的别名列表
-	GroupId     []int64   //接收组的ID号列表
-	GroupAlias  []string  //接收组的别名列表
-	Message     string    //聊天消息内容
-	Memo        string    //备注(预留字段)
-}
-
-//整理后的通知消息(最终呈现给用户的通知消息)
-type PushMessage struct {
-	Id          int64     `xorm:"notnull pk autoincr"`
-	Dttm        time.Time `xorm:"updated"`
-	IdRaw       int64     //此行记录对应的原始ID号
-	SenderId    int64     //发送者的ID号
-	SenderAlias string    //发送者的别名
-	RecverId    []int64   //接收者的ID号列表
-	RecverAlias []string  //接收者的别名列表
-	GroupId     []int64   //接收组的ID号列表
-	GroupAlias  []string  //接收组的别名列表
-	Message     string    //聊天消息内容
-	Memo        string    //备注(预留字段)
+	MyTn     string    `xorm:"-"` //(我的表名)这个Field将不进行字段映射(该结构体的tablename可以不自定义,我为了统一,把它自定义了)
+	Id       int64     `xorm:"notnull pk autoincr"`
+	Dttm     time.Time `xorm:"updated"`
+	SenderId int64     //发送者的ID号
+	RecverId []int64   //接收者的ID号列表
+	GroupId  []int64   //接收组的ID号列表
+	Message  string    //聊天消息内容
+	Memo     string    //备注(预留字段)
 }
 
 //原始聊天消息(服务器刚刚接收到的最原始消息)
 type ChatMessageRaw struct {
-	Id          int64     `xorm:"notnull pk autoincr"`
-	Dttm        time.Time `xorm:"updated"`
-	SenderId    int64     //发送者的ID号
-	SenderAlias string    //发送者的别名
-	RecverId    []int64   //接收者的ID号列表
-	RecverAlias []string  //接收者的别名列表
-	GroupId     []int64   //接收组的ID号列表
-	GroupAlias  []string  //接收组的别名列表
-	Message     string    //聊天消息内容
-	Memo        string    //备注(预留字段)
+	MyTn     string    `xorm:"-"` //(我的表名)这个Field将不进行字段映射(该结构体的tablename可以不自定义,我为了统一,把它自定义了)
+	Id       int64     `xorm:"notnull pk autoincr"`
+	Dttm     time.Time `xorm:"updated"`
+	SenderId int64     //发送者的ID号
+	RecverId []int64   //接收者的ID号列表
+	GroupId  []int64   //接收组的ID号列表
+	Message  string    //聊天消息内容
+	Memo     string    //备注(预留字段)
 }
 
 //整理后的聊天消息(最终呈现给用户的聊天消息)
 type ChatMessage struct {
-	MyTn        string    `xorm:"-"` //(我的表名)这个Field将不进行字段映射
-	Id          int64     `xorm:"notnull pk autoincr unique"`
-	IdRaw       int64     //此行记录对应的原始ID号
-	Dttm        time.Time `xorm:"updated"`
-	SenderId    int64     //发送者的ID号
-	SenderAlias string    //发送者的别名
-	Message     string    //聊天消息内容
-	Memo        string    //备注(预留字段)
+	MyTn     string    `xorm:"-"` //(我的表名)这个Field将不进行字段映射
+	Id       int64     `xorm:"notnull pk autoincr unique"`
+	IdRaw    int64     //此行记录对应的原始ID号
+	Dttm     time.Time `xorm:"updated"`
+	SenderId int64     //发送者的ID号
+	Message  string    //聊天消息内容
+	Memo     string    //备注(预留字段)
 }
 
 func (self *ChatMessage) TableName() string {

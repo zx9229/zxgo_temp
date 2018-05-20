@@ -32,6 +32,14 @@ func calcTableNameFriend(userId1 int64, userId2 int64) string {
 	return fmt.Sprintf("t_f_%v_%v", minVal, maxVal)
 }
 
+func calcTableNameChatRow() string {
+	return "t_chat_row"
+}
+
+func calcTableNamePushRow() string {
+	return "t_push_row"
+}
+
 func myInSlice(dataItem int64, dataSlice []int64) bool {
 	if dataSlice != nil {
 		for _, element := range dataSlice {
@@ -44,23 +52,19 @@ func myInSlice(dataItem int64, dataSlice []int64) bool {
 }
 
 type InnerCacheData struct { //内存中的缓存数据.
-	AllUser          map[int64]*MyStruct.UserData  //所有的用户数据.
-	AllGroup         map[int64]*MyStruct.GroupData //所有的组数据.
-	MapRowIdx        map[string]int64              //以Id递增的表,缓存了它的序号.
-	TnPushMessageRaw string                        //tableName of PushMessageRaw.
-	TnPushMessage    string                        //talbeName of PushMessage.
+	AllUser   map[int64]*MyStruct.UserData  //所有的用户数据.
+	AllGroup  map[int64]*MyStruct.GroupData //所有的组数据.
+	MapRowIdx map[string]int64              //以Id递增的表,缓存了它的序号.
 }
 
-func New_InnerCacheData(engine *xorm.Engine) *InnerCacheData {
+func New_InnerCacheData() *InnerCacheData {
 	newData := new(InnerCacheData)
 
 	newData.AllUser = make(map[int64]*MyStruct.UserData)
 	newData.AllGroup = make(map[int64]*MyStruct.GroupData)
 	newData.MapRowIdx = make(map[string]int64)
-	newData.TnPushMessageRaw = calcTablenameXorm(engine, new(MyStruct.PushMessageRaw))
-	newData.TnPushMessage = calcTablenameXorm(engine, new(MyStruct.PushMessage))
-	newData.MapRowIdx[newData.TnPushMessageRaw] = 0
-	newData.MapRowIdx[newData.TnPushMessage] = 0
+	newData.MapRowIdx[calcTableNamePushRow()] = 0
+	newData.MapRowIdx[calcTableNameChatRow()] = 0
 
 	return newData
 }
@@ -179,8 +183,8 @@ func (self *InnerCacheData) check() error {
 
 	var curLastRowIndexNotice int64
 	var ok bool
-	if curLastRowIndexNotice, ok = self.MapRowIdx[self.TnPushMessage]; !ok {
-		err = errors.New(fmt.Sprintf("找不到%v的数据库表", self.TnPushMessage))
+	if curLastRowIndexNotice, ok = self.MapRowIdx[calcTableNamePushRow()]; !ok {
+		err = errors.New(fmt.Sprintf("找不到%v的数据库表", calcTableNamePushRow()))
 		return err
 	}
 
@@ -209,7 +213,7 @@ func (self *InnerCacheData) check() error {
 			}
 		}
 		if ud.NoticePos < 0 || curLastRowIndexNotice < 0 || curLastRowIndexNotice < ud.NoticePos {
-			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", self.TnPushMessage, curLastRowIndexNotice, ud.Id, ud.NoticePos))
+			err = errors.New(fmt.Sprintf("数据异常:%v有%v条数据,userId=%v接收到了第%v条", calcTableNamePushRow(), curLastRowIndexNotice, ud.Id, ud.NoticePos))
 			return err
 		}
 	}
