@@ -1,4 +1,4 @@
-package MyChat
+package ChatRoom
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ import (
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/ChatRoom/MyStruct"
 )
 
-type MyChat struct {
+type ChatRoom struct {
 	engine     *xorm.Engine
 	mutex      *sync.Mutex
 	cache      *CacheData.CacheData
@@ -27,8 +27,8 @@ type MyChat struct {
 	mapSession map[*websocket.Conn]string
 }
 
-func New_MyChat() *MyChat {
-	newData := new(MyChat)
+func New_ChatRoom() *ChatRoom {
+	newData := new(ChatRoom)
 
 	newData.engine = nil
 	newData.mutex = new(sync.Mutex)
@@ -42,11 +42,11 @@ func New_MyChat() *MyChat {
 	return newData
 }
 
-func (self *MyChat) Engine() *xorm.Engine {
+func (self *ChatRoom) Engine() *xorm.Engine {
 	return self.engine
 }
 
-func (self *MyChat) Init(driverName string, dataSourceName string, locationName string) error {
+func (self *ChatRoom) Init(driverName string, dataSourceName string, locationName string) error {
 	//[非]线程安全.
 	var err error = nil
 
@@ -88,7 +88,7 @@ func (self *MyChat) Init(driverName string, dataSourceName string, locationName 
 	return err
 }
 
-func (self *MyChat) createTablesAndSync2() error {
+func (self *ChatRoom) createTablesAndSync2() error {
 	var err error = nil
 
 	for _ = range "1" {
@@ -116,13 +116,13 @@ func (self *MyChat) createTablesAndSync2() error {
 	return err
 }
 
-func (self *MyChat) loadDataFromDbWithLock() error {
+func (self *ChatRoom) loadDataFromDbWithLock() error {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	return self.loadDataFromDbWithoutLock()
 }
 
-func (self *MyChat) loadDataFromDbWithoutLock() error {
+func (self *ChatRoom) loadDataFromDbWithoutLock() error {
 	var err error
 
 	for _ = range "1" {
@@ -155,13 +155,13 @@ func (self *MyChat) loadDataFromDbWithoutLock() error {
 	return err
 }
 
-func (self *MyChat) saveDataToDbWithLock() error {
+func (self *ChatRoom) saveDataToDbWithLock() error {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	return self.saveDataToDbWithoutLock()
 }
 
-func (self *MyChat) saveDataToDbWithoutLock() error {
+func (self *ChatRoom) saveDataToDbWithoutLock() error {
 	var err error = nil
 	//TODO:如果数据库里面没有这一条记录,我执行update的话,会出现什么行为,这个尚未测试.
 
@@ -193,7 +193,7 @@ func (self *MyChat) saveDataToDbWithoutLock() error {
 	return err
 }
 
-func (self *MyChat) AddUser(alias string, password string) error {
+func (self *ChatRoom) AddUser(alias string, password string) error {
 	var err error
 	for _ = range "1" {
 		if err = self.cache.AddUser(alias, password); err != nil {
@@ -206,7 +206,7 @@ func (self *MyChat) AddUser(alias string, password string) error {
 	return err
 }
 
-func (self *MyChat) AddFriends(fId1 int64, fId2 int64) error {
+func (self *ChatRoom) AddFriends(fId1 int64, fId2 int64) error {
 	var err error
 	for _ = range "1" {
 		if err = self.cache.AddFriends(fId1, fId2); err != nil {

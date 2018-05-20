@@ -12,8 +12,11 @@ import (
 )
 
 type ConfigData struct {
-	Host string
-	Port int
+	Host              string
+	Port              int
+	DB_DriverName     string
+	DB_DataSourceName string
+	DB_LocationName   string
 }
 
 func main() {
@@ -30,7 +33,7 @@ func main() {
 	}
 
 	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
-	myWebService := MyService.New_MyService(listenAddr)
+	myWebService := MyService.New_MyService(listenAddr, cfgData.DB_DriverName, cfgData.DB_DataSourceName, cfgData.DB_LocationName)
 	myWebService.Init()
 
 	var err error

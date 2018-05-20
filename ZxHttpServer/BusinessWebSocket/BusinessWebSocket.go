@@ -6,15 +6,17 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/zx9229/zxgo_temp/ZxHttpServer/ChatRoom"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer/TxStruct"
 	"golang.org/x/net/websocket"
 )
 
 type BusinessWebSocket struct {
-	parser *TxStruct.TxParser
+	parser   *TxStruct.TxParser
+	chatRoom *ChatRoom.ChatRoom
 }
 
-func New_BusinessWebSocket() *BusinessWebSocket {
+func New_BusinessWebSocket(driverName, dataSourceName, locationName string) *BusinessWebSocket {
 	curData := new(BusinessWebSocket)
 	//
 	curData.parser = TxStruct.New_TxParser()
@@ -24,6 +26,8 @@ func New_BusinessWebSocket() *BusinessWebSocket {
 		}
 	}
 	//
+	curData.chatRoom = ChatRoom.New_ChatRoom()
+	curData.chatRoom.Init(driverName, dataSourceName, locationName)
 	return curData
 }
 
