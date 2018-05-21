@@ -2,6 +2,7 @@ package ChatRoom
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 	"sync"
@@ -25,7 +26,7 @@ type ChatRoom struct {
 	chanPmr    chan *MyStruct.PushMessageRaw //存数据库专用
 	chanCmr    chan *MyStruct.ChatMessageRaw //存数据库专用
 	chanCm     chan *MyStruct.ChatMessage    //存数据库专用
-	mapSession map[*websocket.Conn]string
+	mapSession map[*websocket.Conn]int64
 }
 
 func New_ChatRoom() *ChatRoom {
@@ -38,7 +39,7 @@ func New_ChatRoom() *ChatRoom {
 	newData.chanPmr = make(chan *MyStruct.PushMessageRaw, 1024)
 	newData.chanCmr = make(chan *MyStruct.ChatMessageRaw, 1024)
 	newData.chanCm = make(chan *MyStruct.ChatMessage, 1024)
-	newData.mapSession = make(map[*websocket.Conn]string)
+	newData.mapSession = make(map[*websocket.Conn]int64)
 
 	return newData
 }
@@ -222,4 +223,18 @@ func (self *ChatRoom) AddFriends(fId1 int64, fId2 int64) error {
 		}
 	}
 	return err
+}
+
+func (self *ChatRoom) LoginReq(ws *websocket.Conn, uId int64, uAlias string, password string) error {
+	var err error
+	var loginUserId int64
+	if loginUserId, ok := self.mapSession[ws]; ok {
+		err = fmt.Errorf("已经登录userId=%v用户", loginUserId)
+		return err
+	}
+	if loginUserId, err = self.cache.CheckPassword(uId, uAlias, password); err != nil {
+		return err
+	}
+	self.mapSession[ws] = loginUserId
+	return nil
 }

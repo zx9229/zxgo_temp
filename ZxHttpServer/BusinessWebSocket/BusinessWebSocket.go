@@ -110,6 +110,15 @@ func (self *BusinessWebSocket) Handle_Parse_OK_LoginReq(ws *websocket.Conn, v in
 	reqObj := v.(*TxStruct.LoginReq)
 	rspObj := new(TxStruct.LoginRsp)
 	rspObj.FillField_FromReq(reqObj)
+	var err error
+	if err = self.chatRoom.LoginReq(ws, reqObj.UserId, reqObj.UserAlias, reqObj.Password); err != nil {
+		rspObj.Code = -1
+		rspObj.Message = err.Error()
+	} else {
+		rspObj.Code = 0
+		rspObj.Message = "登录成功"
+	}
+	self._websocket_Message_Send(ws, TxStruct.ToJsonStr(rspObj))
 }
 
 func (self *BusinessWebSocket) Handle_Parse_OK_AddUserReq(ws *websocket.Conn, v interface{}) {
@@ -145,6 +154,7 @@ func (self *BusinessWebSocket) Handle_Parse_OK_AddFriendReq(ws *websocket.Conn, 
 func (self *BusinessWebSocket) GetRegisterHandlerMap() map[reflect.Type]TxStruct.TxParserHandler {
 	mapData := make(map[reflect.Type]TxStruct.TxParserHandler)
 	//
+	mapData[reflect.ValueOf(TxStruct.LoginReq{}).Type()] = self.Handle_Parse_OK_LoginReq
 	mapData[reflect.ValueOf(TxStruct.AddUserReq{}).Type()] = self.Handle_Parse_OK_AddUserReq
 	mapData[reflect.ValueOf(TxStruct.AddFriendReq{}).Type()] = self.Handle_Parse_OK_AddFriendReq
 	//

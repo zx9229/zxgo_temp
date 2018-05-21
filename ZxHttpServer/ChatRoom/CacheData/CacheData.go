@@ -390,3 +390,24 @@ func (self *CacheData) AddFriends(fId1 int64, fId2 int64) error {
 
 	return err
 }
+
+func (self *CacheData) CheckPassword(uId int64, uAlias string, password string) (userId int64, err error) {
+	var ud *MyStruct.UserData
+	if 0 < uId {
+		if ud, err = self.inner.findUserId(uId); err != nil {
+			return
+		}
+	} else {
+		if ud, err = self.inner.findUserAlias(uAlias); err != nil {
+			return
+		}
+	}
+
+	if ud.Password == password {
+		userId = ud.Id
+		return
+	} else {
+		err = errors.New("密码错误")
+		return
+	}
+}
