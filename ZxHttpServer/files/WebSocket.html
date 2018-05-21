@@ -5,8 +5,8 @@
     <!-- 文件源自 https://code.jquery.com/jquery/ 的 https://code.jquery.com/jquery-1.11.3.min.js -->
     <script src="/files/jquery/jquery-1.11.3.min.js"></script>
     <script type="text/javascript">
-        function isNull(obj) { return obj === null; } //判断是否是Null
-        function isNaN(obj) { return obj !== obj; } //判断是否是NaN
+        function isNull(obj) { return obj === null; }        //判断是否是Null
+        function isNaN(obj) { return obj !== obj; }          //判断是否是NaN
         function isUndefined(obj) { return obj === void 0; } //判断是否是undefined
 
         var tempValue = 0;
@@ -113,8 +113,10 @@
         function queryTxStructJsonStr() {
             var url = "/TxStruct?Type=" + document.getElementById('txsn').value;
             $.get(url, function (data, status, xhr) {
-                tempValue += 1;
-                data = modify_TransmitId_to_value(data, tempValue);
+                if (document.getElementById("incr").checked) {
+                    tempValue += 1;
+                    data = modify_TransmitId_to_value(data, tempValue);
+                }
                 set_data_to_value_by_id('txt_send', data)
             });
         }
@@ -170,6 +172,7 @@
         <tr>
             <th>
                 <button onclick="sendMessage()">发送消息</button>
+                <input id="incr" type="checkbox">
             </th>
             <th>
                 <button onclick="clearRcvTxt()">清空</button>
@@ -188,7 +191,7 @@
             </td>
         </tr>
     </table>
-    通信结构体名字：
+    <label>通信结构体名字：</label>
     <input list="TxStructName" id="txsn" />
     <datalist id="TxStructName">
         {{range .}}
