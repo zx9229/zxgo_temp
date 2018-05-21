@@ -53,6 +53,7 @@ func myInSlice(dataItem int64, dataSlice []int64) bool {
 }
 
 type InnerCacheData struct { //内存中的缓存数据.
+	RootUser  *MyStruct.UserData
 	AllUser   map[int64]*MyStruct.UserData  //所有的用户数据.
 	AllGroup  map[int64]*MyStruct.GroupData //所有的组数据.
 	MapRowIdx map[string]int64              //以Id递增的表,缓存了它的序号.
@@ -61,6 +62,9 @@ type InnerCacheData struct { //内存中的缓存数据.
 func new_InnerCacheData() *InnerCacheData {
 	curData := new(InnerCacheData)
 	//
+	curData.RootUser = new(MyStruct.UserData)
+	curData.RootUser.Id = 0
+	curData.RootUser.Password = "123"
 	curData.AllUser = make(map[int64]*MyStruct.UserData)
 	curData.AllGroup = make(map[int64]*MyStruct.GroupData)
 	curData.MapRowIdx = make(map[string]int64)
@@ -318,16 +322,15 @@ func (self *InnerCacheData) calcMaxUserId() int64 {
 	return maxId
 }
 
-func (self *CacheData) AddUser(alias string, password string) error {
-	var err error
+func (self *CacheData) AddUser(alias string, password string) (newUserId int64, err error) {
 	if len(alias) == 0 {
 		err = errors.New("要创建的用户的alias字符串为空")
-		return err
+		return
 	}
 
 	if _, err = self.inner.findUserAlias(alias); err == nil {
 		err = fmt.Errorf("已经存在userAlias=%v的用户", alias)
-		return err
+		return
 	}
 
 	newUd := MyStruct.New_UserData()
@@ -338,17 +341,18 @@ func (self *CacheData) AddUser(alias string, password string) error {
 	var cloneInner *InnerCacheData
 	if cloneInner, err = self.inner.clone(); err != nil {
 		err = errors.New("执行代码出错,数据未修改")
-		return err
+		return
 	}
 
 	cloneInner.AllUser[newUd.Id] = newUd
 	if err = cloneInner.check(); err != nil {
-		return err
+		return
 	}
 
 	self.inner = cloneInner
 
-	return err
+	newUserId = newUd.Id
+	return
 }
 
 func (self *CacheData) AddFriends(fId1 int64, fId2 int64) error {

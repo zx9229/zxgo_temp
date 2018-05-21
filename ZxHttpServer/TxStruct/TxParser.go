@@ -33,10 +33,8 @@ func New_TxParser() *TxParser {
 
 func CalcMapStr2Type() map[string]reflect.Type {
 	slice_ := make([]interface{}, 0)
-	slice_ = append(slice_, ChatMessage{})
-	slice_ = append(slice_, ChatMessageRsp{})
-	slice_ = append(slice_, PushMessage{})
-	slice_ = append(slice_, PushMessageRsp{})
+	slice_ = append(slice_, CreateUserReq{})
+	slice_ = append(slice_, CreateUserRsp{})
 
 	cacheData := map[string]reflect.Type{}
 	for _, element := range slice_ {

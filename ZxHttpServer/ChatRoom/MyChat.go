@@ -2,6 +2,7 @@ package ChatRoom
 
 import (
 	"errors"
+	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -193,17 +194,16 @@ func (self *ChatRoom) saveDataToDbWithoutLock() error {
 	return err
 }
 
-func (self *ChatRoom) AddUser(alias string, password string) error {
-	var err error
+func (self *ChatRoom) AddUser(alias string, password string) (newUserId int64, err error) {
 	for _ = range "1" {
-		if err = self.cache.AddUser(alias, password); err != nil {
+		if newUserId, err = self.cache.AddUser(alias, password); err != nil {
 			break
 		}
-		if err = self.saveDataToDbWithLock(); err != nil {
-			break
+		if err2 := self.saveDataToDbWithLock(); err2 != nil {
+			log.Println(err)
 		}
 	}
-	return err
+	return
 }
 
 func (self *ChatRoom) AddFriends(fId1 int64, fId2 int64) error {

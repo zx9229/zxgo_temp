@@ -1,5 +1,7 @@
 package TxStruct //通信结构体.
-import "reflect"
+import (
+	"reflect"
+)
 
 type TxBaseData struct {
 	Type string
@@ -41,7 +43,7 @@ func (self *ChatMessageRsp) FillField_Type() {
 }
 
 //通知消息
-type PushMessage struct {
+type PushMessageReq struct {
 	Type        string
 	TransmitId  int64    //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
 	SenderId    int64    //发送者的ID号
@@ -54,7 +56,7 @@ type PushMessage struct {
 	Memo        string   //备注(预留字段)
 }
 
-func (self *PushMessage) FillField_Type() {
+func (self *PushMessageReq) FillField_Type() {
 	self.Type = reflect.ValueOf(*self).Type().Name()
 }
 
@@ -71,15 +73,6 @@ type PushMessageRsp struct {
 
 func (self *PushMessageRsp) FillField_Type() {
 	self.Type = reflect.ValueOf(*self).Type().Name()
-}
-
-//创建某用户(用户一旦创建,不可删除,只能禁用[为了数据唯一性]).
-type CreateUser struct {
-	Type       string
-	TransmitId int64
-	OperatorId int64  //操作员,一般是超管/用户本人.
-	Alias      string //用户的别名.
-	Password   string //用户的密码.
 }
 
 //禁用某用户

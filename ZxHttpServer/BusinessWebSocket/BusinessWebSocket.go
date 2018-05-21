@@ -108,16 +108,30 @@ func (self *BusinessWebSocket) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, o
 func (self *BusinessWebSocket) Handle_Parse_OK_PushMessage(ws *websocket.Conn, objData interface{}) {
 	log.Println(fmt.Sprintf("解析成功:ws=[%p],%v", ws, objData))
 	if true {
-		var sendMessage string = "解析数据成功!" + (objData.(*TxStruct.PushMessage)).Type
+		var sendMessage string = "解析数据成功!" + (objData.(*TxStruct.PushMessageReq)).Type
 		self._websocket_Message_Send(ws, sendMessage)
 	}
+}
+
+func (self *BusinessWebSocket) Handle_Parse_OK_CreateUserReq(ws *websocket.Conn, v interface{}) {
+	reqObj := v.(*TxStruct.CreateUserReq)
+	rspObj := new(TxStruct.CreateUserRsp)
+	rspObj.FillField_FromReq(reqObj)
+	var err error
+	if rspObj.UserId, err = self.chatRoom.AddUser(reqObj.UserAlias, reqObj.UserPassword); err != nil {
+		rspObj.Code = -1
+		rspObj.Message = err.Error()
+	} else {
+		rspObj.Code = 0
+		rspObj.Message = ""
+	}
+	self._websocket_Message_Send(ws, rspObj.ToJsonStr())
 }
 
 func (self *BusinessWebSocket) GetRegisterHandlerMap() map[reflect.Type]TxStruct.TxParserHandler {
 	mapData := make(map[reflect.Type]TxStruct.TxParserHandler)
 	//
-	mapData[reflect.ValueOf(TxStruct.ChatMessage{}).Type()] = self.Handle_Parse_OK_ChatMessage
-	mapData[reflect.ValueOf(TxStruct.PushMessage{}).Type()] = self.Handle_Parse_OK_PushMessage
+	mapData[reflect.ValueOf(TxStruct.CreateUserReq{}).Type()] = self.Handle_Parse_OK_CreateUserReq
 	//
 	return mapData
 }
