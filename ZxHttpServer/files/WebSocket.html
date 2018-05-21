@@ -9,17 +9,18 @@
         function isNaN(obj) { return obj !== obj; } //判断是否是NaN
         function isUndefined(obj) { return obj === void 0; } //判断是否是undefined
 
+        var tempValue = 0;
         var websocket = null;
 
         //创建连接.
         function createWebSocket() {
             if (isNull(websocket) == false) {
-                insertDataToLogTable("[W][createWebSocket]已创建!无法再次创建!");
+                insert_data_to_log_table("[W][createWebSocket]已创建!无法再次创建!");
                 return;
             }
             //判断当前浏览器是否支持WebSocket.
             if (('WebSocket' in window) == false) {
-                insertDataToLogTable("[W][createWebSocket]您的浏览器不支持WebSocket!");
+                insert_data_to_log_table("[W][createWebSocket]您的浏览器不支持WebSocket!");
                 return;
             }
             //创建连接.
@@ -27,25 +28,25 @@
             websocket = new WebSocket(urlValue);
             //连接成功建立的回调方法.
             websocket.onopen = function (event) {
-                insertDataToLogTable("[W][websocket.onopen]连接成功.");
+                insert_data_to_log_table("[W][websocket.onopen]连接成功.");
             }
             //连接关闭的回调方法.
             websocket.onclose = function () {
-                insertDataToLogTable("[W][websocket.onclose]连接被关闭!");
+                insert_data_to_log_table("[W][websocket.onclose]连接被关闭!");
                 websocket = null;
             }
             //连接发生错误的回调方法.
             websocket.onerror = function () {
-                insertDataToLogTable("[W][websocket.onerror]发生了错误!");
+                insert_data_to_log_table("[W][websocket.onerror]发生了错误!");
             };
             //接收到消息的回调方法.
             websocket.onmessage = function (event) {
                 set_data_to_value_by_id('txt_recv', event.data);
-                insertDataToLogTable(event.data);
+                insert_data_to_log_table(event.data);
             }
             //监听窗口关闭事件,当窗口关闭时,主动去关闭websocket连接,防止连接还没断开就关闭窗口,server端会抛异常.
             window.onbeforeunload = function () {
-                insertDataToLogTable("[W][window.onbeforeunload]出现了异常?");
+                insert_data_to_log_table("[W][window.onbeforeunload]出现了异常?");
                 websocket.close();
             }
         }
@@ -53,18 +54,18 @@
         //关闭连接
         function closeWebSocket() {
             if (isNull(websocket) == true) {
-                insertDataToLogTable("[W][closeWebSocket]已关闭!无法再次关闭!");
+                insert_data_to_log_table("[W][closeWebSocket]已关闭!无法再次关闭!");
                 return;
             }
             websocket.close();
             websocket = null;
-            insertDataToLogTable("[W][websocket.close]主动关闭连接结束.");
+            insert_data_to_log_table("[W][websocket.close]主动关闭连接结束.");
         }
 
         //发送消息.
         function sendMessage() {
             if (isNull(websocket) == true) {
-                insertDataToLogTable("[W][sendMessage]尚未创建连接!");
+                insert_data_to_log_table("[W][sendMessage]尚未创建连接!");
                 return;
             }
             websocket.send(document.getElementById('txt_send').value);
@@ -81,6 +82,23 @@
             return (new Date()).toLocaleTimeString();
         }
 
+        function modify_TransmitId_to_value(oldData, value) {
+            var newData = ''
+            try {
+                var TransmitId = "TransmitId";
+                var oldObj = JSON.parse(oldData);
+                if (TransmitId in oldObj) {
+                    oldObj[TransmitId] = value;
+                    newData = JSON.stringify(oldObj);
+                } else {
+                    newData = oldData;
+                }
+            } catch (error) {
+                newData = oldData;
+            }
+            return newData;
+        }
+
         function set_data_to_value_by_id(id, data) {
             var element = null
             try {
@@ -95,11 +113,13 @@
         function queryTxStructJsonStr() {
             var url = "/TxStruct?Type=" + document.getElementById('txsn').value;
             $.get(url, function (data, status, xhr) {
+                tempValue += 1;
+                data = modify_TransmitId_to_value(data, tempValue);
                 set_data_to_value_by_id('txt_send', data)
             });
         }
 
-        function insertDataToLogTable(data) {
+        function insert_data_to_log_table(data) {
             var data_Type = ''
             var data_TxId = ''
             var data_Code = ''
