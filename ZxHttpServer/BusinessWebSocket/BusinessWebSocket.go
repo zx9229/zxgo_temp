@@ -98,19 +98,18 @@ func (self *BusinessWebSocket) Handle_Parse_Fail(ws *websocket.Conn, bytes []byt
 	}
 }
 
-func (self *BusinessWebSocket) Handle_Parse_OK_ChatMessage(ws *websocket.Conn, objData interface{}) {
-	log.Println(fmt.Sprintf("解析成功:ws=[%p],%v", ws, objData))
-	if true {
-		var sendMessage string = "解析数据成功!" + (objData.(*TxStruct.ChatMessage)).Type
-		self._websocket_Message_Send(ws, sendMessage)
-	}
-}
 func (self *BusinessWebSocket) Handle_Parse_OK_PushMessage(ws *websocket.Conn, objData interface{}) {
 	log.Println(fmt.Sprintf("解析成功:ws=[%p],%v", ws, objData))
 	if true {
 		var sendMessage string = "解析数据成功!" + (objData.(*TxStruct.PushMessageReq)).Type
 		self._websocket_Message_Send(ws, sendMessage)
 	}
+}
+
+func (self *BusinessWebSocket) Handle_Parse_OK_LoginReq(ws *websocket.Conn, v interface{}) {
+	reqObj := v.(*TxStruct.LoginReq)
+	rspObj := new(TxStruct.LoginRsp)
+	rspObj.FillField_FromReq(reqObj)
 }
 
 func (self *BusinessWebSocket) Handle_Parse_OK_AddUserReq(ws *websocket.Conn, v interface{}) {

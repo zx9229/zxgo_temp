@@ -16,46 +16,11 @@ type TxBaseData struct {
 	Type string
 }
 
-//聊天消息
-//将RecverId和RecverAlias取并集,这个聊天消息会发给这个并集里的成员;GroupId和GroupAlias同理.
-type ChatMessage struct {
-	Type        string   //reflect.ValueOf(ChatMessage{}).Type().Name()
-	TransmitId  int64    //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
-	SenderId    int64    //发送者的ID号
-	SenderAlias string   //发送者的别名
-	RecverId    []int64  //接收者的ID号列表
-	RecverAlias []string //接收者的别名列表
-	GroupId     []int64  //接收组的ID号列表
-	GroupAlias  []string //接收组的别名列表
-	Message     string   //聊天消息内容
-	Memo        string   //备注(预留字段)
-}
-
-func (self *ChatMessage) FillField_Type() {
-	self.Type = reflect.ValueOf(*self).Type().Name()
-}
-
-// 聊天消息,响应
-type ChatMessageRsp struct {
-	Type         string           //类型的名字
-	TransmitId   int64            //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
-	Code         int              //返回值
-	Message      string           //返回的详细信息
-	SucceedId    map[int64]string //[key]是[id],[value]是[alias]
-	FailedId     map[int64]string //[key]是[id],[value]是[alias]
-	SucceedGroup map[int64]string //[key]是[id],[value]是[alias]
-	FailedGroup  map[int64]string //[key]是[id],[value]是[alias]
-}
-
-func (self *ChatMessageRsp) FillField_Type() {
-	self.Type = reflect.ValueOf(*self).Type().Name()
-}
-
 //通知消息
 type PushMessageReq struct {
 	Type        string
 	TransmitId  int64    //传输ID(客户端带过来一个序号,服务器会返回同样的数字)
-	SenderId    int64    //发送者的ID号
+	SenderId    int64    //发送者的ID号(优先使用ID,ID无效[id<=0]则使用别名)
 	SenderAlias string   //发送者的别名
 	RecverId    []int64  //接收者的ID号列表
 	RecverAlias []string //接收者的别名列表
@@ -98,23 +63,6 @@ type EnableUser struct {
 	TransmitId int64
 	OperatorId int64 //操作员,一般是超管.
 	UserId     int64 //要启用的用户.
-}
-
-type Login struct {
-	Type       string
-	TransmitId int64
-	UserId     int64  //要登录用户的ID.(优先使用ID,ID无效[id<=0]则使用别名)
-	UserAlias  string //要登录的用户的别名.(len(alias)>0)
-	Password   string
-}
-
-type LoginRsp struct {
-	Type       string
-	TransmitId int64
-	Code       int
-	Message    string
-	UserId     int64
-	UserAlias  string
 }
 
 type Logout struct {

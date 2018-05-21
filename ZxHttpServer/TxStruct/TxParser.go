@@ -33,6 +33,10 @@ func New_TxParser() *TxParser {
 
 func CalcMapStr2Type() map[string]reflect.Type {
 	slice_ := make([]interface{}, 0)
+	slice_ = append(slice_, LoginReq{})
+	slice_ = append(slice_, LoginRsp{})
+	slice_ = append(slice_, ChatMessageReq{})
+	slice_ = append(slice_, ChatMessageRsp{})
 	slice_ = append(slice_, AddUserReq{})
 	slice_ = append(slice_, AddUserRsp{})
 	slice_ = append(slice_, AddFriendReq{})
@@ -98,9 +102,9 @@ func (self *TxParser) ParseByteSlice(ws *websocket.Conn, jsonByte []byte) (objDa
 func ThisIsExample() {
 
 	parser := New_TxParser()
-	parser.RegisterHandler(reflect.ValueOf(ChatMessage{}).Type(), cb_ChatMessage)
+	parser.RegisterHandler(reflect.ValueOf(ChatMessageReq{}).Type(), cb_ChatMessage)
 
-	someObj := ChatMessage{}
+	someObj := ChatMessageReq{}
 	someObj.FillField_Type()
 	someObj.Message = "data_for_test"
 	if jsonByte, err := json.Marshal(someObj); err != nil {
