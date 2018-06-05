@@ -14,6 +14,57 @@ import (
 //可能要对ID作部分保留,比如,ID=1的用户作为广播用户,等.
 //可能还要有一个通知表,通知表里面,如果ID=0,表示向全体user/group广播这条消息.
 
+//我相关的消息: (发送ID=我)||(接收ID=我)||(群组 in 我的群列表) order by id ASC
+//好友聊天记录: groupId=0 (发送ID=我&&接收ID=好友)||(接收ID=我&&发送ID=好友)
+//群聊天记录  : RecvId=0 (群组 in 我的群列表)
+//------
+//好友聊天记录: (发送者=我)&&友(接收者 like %,好友,%)||(发送者=好友)&&(接收者 like %,我,%)
+//群聊天记录  : (接收组 like %,某群号,%)
+//我相关的消息: (发送者=我)||(接收者 like %,我,%)||(接收组 like '%我的群组1%')||(接收组 like '%我的群组n%')
+//推送记录: senderId=0
+//发送给所有人:-1
+type XyzMessage struct {
+	Id         int64
+	SenderId   int64   //发送者的ID
+	RecvId     []int64 //接收者的ID(好友聊天)【头和尾都加0,方便搜索】
+	GroupId    []int64 //接收组的ID(群组聊天)【头和尾都加0,方便搜索】
+	Message    string  //聊天消息内容
+	Memo       string  //备注(预留字段)
+	UpdateTime time.Time
+}
+
+type MessageRaw struct {
+	Id         int64
+	SenderId   int64
+	RecvId     []int64
+	RecvAlias  []string
+	GroupId    []int64
+	GroupAlias []string
+	Message    string
+	Memo       string
+	UpdateTime time.Time
+}
+type MessageCache struct {
+	Id         int64
+	SenderId   int64
+	RecvId     []int64
+	GroupId    []int64
+	Message    string
+	Memo       string
+	UpdateTime time.Time
+}
+
+type MessageData struct {
+	Id         int64
+	Tag        string //c_id1_id2_(2人聊天的表),g_id_(group里聊天),pc_id_(推送给个人的消息),pg_id_(推送给组的消息)
+	TagIdx     int64  //在这个标签里,本消息的序号.
+	Sender     int64  //发送者的ID
+	Receiver   int64  //接收者的ID/接收组的ID
+	Message    string //聊天消息内容
+	Memo       string //备注(预留字段)
+	UpdateTime time.Time
+}
+
 type KeyValue struct {
 	Key        string    `xorm:"notnull pk"` //键
 	Value      string    //值
