@@ -1,4 +1,4 @@
-package CacheOnline
+package TxConnectionAndManager
 
 import (
 	"fmt"
@@ -12,17 +12,22 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+//连接(Connection)和连接管理器(ConnectionManager)不太可能独立开来. 因为:
+//很显然, 管理器要维护各个连接, 所以避免不了的,              存储器要存储连接的指针, 调用某连接的函数.
+//如果一个连接断开了, 它要通知管理器, 让管理器删除自己, 所以, 连接要存储管理器的指针, 调用管理器的函数.
+//在C++里, 它俩是要搞成友元类的.
+
 type TxConnection struct {
 	ws         *websocket.Conn
 	handles    map[reflect.Type]func(i interface{})
 	parser     *TxStruct.TxParser
 	cacheData  *CacheData.CacheData
-	manager    *ConnectionManager
+	manager    *TxConnectionManager
 	DeviceType int //(登录时,使用的)设备类型(手机/PC/网页/等).
 	UD         *ChatStruct.UserData
 }
 
-func New_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager *ConnectionManager) *TxConnection {
+func New_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager *TxConnectionManager) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws

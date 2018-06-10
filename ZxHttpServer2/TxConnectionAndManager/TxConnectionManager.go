@@ -1,4 +1,4 @@
-package CacheOnline
+package TxConnectionAndManager
 
 import (
 	"encoding/json"
@@ -8,21 +8,21 @@ import (
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 )
 
-type ConnectionManager struct {
+type TxConnectionManager struct {
 	allConnection map[*TxConnection]bool
 	mapUser       map[int64]map[int]*TxConnection           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
 	mapGroup      map[int64]map[int64]map[int]*TxConnection //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
 }
 
-func New_ConnectionManager() *ConnectionManager {
-	curData := new(ConnectionManager)
+func New_TxConnectionManager() *TxConnectionManager {
+	curData := new(TxConnectionManager)
 	curData.allConnection = make(map[*TxConnection]bool)
 	curData.mapUser = make(map[int64]map[int]*TxConnection)
 	curData.mapGroup = make(map[int64]map[int64]map[int]*TxConnection)
 	return curData
 }
 
-func (self *ConnectionManager) Flush(jsonStr string) error {
+func (self *TxConnectionManager) Flush(jsonStr string) error {
 	var err error
 
 	tmpObj := new(CacheData.InnerCacheData)
@@ -85,7 +85,7 @@ func (self *ConnectionManager) Flush(jsonStr string) error {
 	return err
 }
 
-func (self *ConnectionManager) Send(msgSlice []*ChatStruct.MessageData) {
+func (self *TxConnectionManager) Send(msgSlice []*ChatStruct.MessageData) {
 
 	if msgSlice == nil {
 		return
@@ -114,7 +114,7 @@ func (self *ConnectionManager) Send(msgSlice []*ChatStruct.MessageData) {
 	}
 }
 
-func (self *ConnectionManager) HandleLogin(conn *TxConnection) {
+func (self *TxConnectionManager) HandleLogin(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")
@@ -147,7 +147,7 @@ func (self *ConnectionManager) HandleLogin(conn *TxConnection) {
 	}
 }
 
-func (self *ConnectionManager) HandleLogout(conn *TxConnection) {
+func (self *TxConnectionManager) HandleLogout(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")
@@ -164,7 +164,7 @@ func (self *ConnectionManager) HandleLogout(conn *TxConnection) {
 	}
 }
 
-func (self *ConnectionManager) HandleConnected(conn *TxConnection) {
+func (self *TxConnectionManager) HandleConnected(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; ok {
 		panic("逻辑异常")
@@ -173,7 +173,7 @@ func (self *ConnectionManager) HandleConnected(conn *TxConnection) {
 	self.allConnection[conn] = true
 }
 
-func (self *ConnectionManager) HandleDisconnected(conn *TxConnection) {
+func (self *TxConnectionManager) HandleDisconnected(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")
