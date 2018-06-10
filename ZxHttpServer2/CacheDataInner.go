@@ -7,12 +7,14 @@ import (
 )
 
 type InnerCacheData struct { //内存中的缓存数据.
-	AllUser       map[int64]*UserData  //所有的用户信息.
-	LastUserId    int64                //最后一个创建的用户ID(允许删除用户,删除之后,这个ID就不能再用了,所以需要一个字段维护数据).
-	AllGroup      map[int64]*GroupData //所有的组信息.
-	LastGroupId   int64                //最后一个创建的组ID.
-	TagIdxUsable  map[string]int64     //tag的最新序号.
-	TagIdxUseless map[string]int64     //解除好友关系的tag移到这里来.
+	AllUser        map[int64]*UserData  //所有的用户信息.
+	LastIdUser     int64                //最后一个创建的用户ID(允许删除用户,删除之后,这个ID就不能再用了,所以需要一个字段维护数据).
+	AllGroup       map[int64]*GroupData //所有的组信息.
+	LastIdGroup    int64                //最后一个创建的组ID.
+	TagIdxUsable   map[string]int64     //tag的最新序号.
+	TagIdxUseless  map[string]int64     //解除好友关系的tag移到这里来.
+	LastIdMsgCache int64                //最后一个MessageCache的ID.
+	LastIdMsgData  int64                //最后一个MessageData的ID.
 }
 
 const ROOT_USER_ID int64 = 1
@@ -32,7 +34,7 @@ func new_InnerCacheData() *InnerCacheData {
 		rootUser.Password = "toor"
 		//
 		curData.AllUser[rootUser.Id] = rootUser
-		curData.LastUserId = rootUser.Id
+		curData.LastIdUser = rootUser.Id
 		curData.TagIdxUsable[TagName_User_Push(ROOT_USER_ID)] = 0
 	}
 	//
@@ -70,12 +72,12 @@ func (self *InnerCacheData) checkFriend(uId1 int64, uId2 int64) error {
 			break
 		}
 
-		if !SliceInt64_isIn(ud1.Friends, ud2.Id) {
+		if _, ok = ud1.Friends[ud2.Id]; !ok {
 			err = fmt.Errorf("userId=%v不是userId=%v的好友", ud2.Id, ud1.Id)
 			break
 		}
 
-		if !SliceInt64_isIn(ud2.Friends, ud1.Id) {
+		if _, ok = ud2.Friends[ud1.Id]; !ok {
 			err = fmt.Errorf("userId=%v不是userId=%v的好友", ud1.Id, ud2.Id)
 			break
 		}
@@ -108,12 +110,15 @@ func (self *InnerCacheData) checkGroupMember(uId int64, gId int64) error {
 			break
 		}
 
-		if !SliceInt64_isIn(ud.Groups, gId) {
+		if _, ok = ud.Groups[gId]; !ok {
 			err = fmt.Errorf("userId=%v不是groupId=%v的成员_1", ud.Id, gd.Id)
 			break
 		}
 
-		if gd.SuperId != ud.Id && !SliceInt64_isIn(gd.AdminId, ud.Id) && !SliceInt64_isIn(gd.OtherMemId, ud.Id) {
+		check1 := (gd.SuperId != ud.Id)
+		_, check2 := gd.AdminId[ud.Id]
+		_, check3 := gd.OtherMemId[ud.Id]
+		if !check1 && !check2 && !check3 {
 			err = fmt.Errorf("userId=%v不是groupId=%v的成员_2", ud.Id, gd.Id)
 			break
 		}
@@ -145,13 +150,13 @@ func (self *InnerCacheData) checkUser(uId int64) error {
 			break
 		}
 
-		for _, fId := range ud.Friends {
+		for fId, _ := range ud.Friends {
 			if err = self.checkFriend(ud.Id, fId); err != nil {
 				break
 			}
 		}
 
-		for _, gId := range ud.Groups {
+		for gId, _ := range ud.Groups {
 			if err = self.checkGroupMember(ud.Id, gId); err != nil {
 				break
 			}
@@ -179,10 +184,10 @@ func (self *InnerCacheData) checkGroup(gId int64) error {
 
 		allMember := make(map[int64]bool)
 		allMember[gd.SuperId] = true
-		for _, aId := range gd.AdminId {
+		for aId, _ := range gd.AdminId {
 			allMember[aId] = true
 		}
-		for _, mId := range gd.OtherMemId {
+		for mId, _ := range gd.OtherMemId {
 			allMember[mId] = true
 		}
 		if len(allMember) != 1+len(gd.AdminId)+len(gd.OtherMemId) {
@@ -344,7 +349,7 @@ func (self *InnerCacheData) checkLast_U_G_Id() error {
 			maxId = ud.Id
 		}
 	}
-	if self.LastUserId < maxId {
+	if self.LastIdUser < maxId {
 		err = errors.New("数据异常")
 		return err
 	}
@@ -355,7 +360,7 @@ func (self *InnerCacheData) checkLast_U_G_Id() error {
 			maxId = gd.Id
 		}
 	}
-	if self.LastGroupId < maxId {
+	if self.LastIdGroup < maxId {
 		err = errors.New("数据异常")
 		return err
 	}

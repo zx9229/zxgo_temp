@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 )
 
 type CacheData struct {
@@ -55,9 +56,9 @@ func (self *CacheData) AddUser(alias string, password string) (newUserId int64, 
 		return
 	}
 
-	cloneInner.LastUserId += 1
+	cloneInner.LastIdUser += 1
 	newUd := New_UserData()
-	newUd.Id = cloneInner.LastUserId
+	newUd.Id = cloneInner.LastIdUser
 	newUd.Alias = alias
 	newUd.Password = password
 
@@ -88,7 +89,7 @@ func (self *CacheData) AddFriend(fId1 int64, fId2 int64) error {
 		return err
 	}
 
-	if SliceInt64_isIn(ud1.Friends, ud2.Id) {
+	if _, isOk := ud1.Friends[ud2.Id]; isOk {
 		err = errors.New("已经是好友了")
 		return err
 	}
@@ -107,8 +108,8 @@ func (self *CacheData) AddFriend(fId1 int64, fId2 int64) error {
 	ud2 = nil
 	ud1 = cloneInner.AllUser[fId1]
 	ud2 = cloneInner.AllUser[fId2]
-	ud1.Friends = append(ud1.Friends, ud2.Id)
-	ud2.Friends = append(ud2.Friends, ud1.Id)
+	ud1.Friends[ud2.Id] = true
+	ud2.Friends[ud1.Id] = true
 	tagName := TagName_User_Chat(ud1.Id, ud2.Id)
 	if idx, ok := cloneInner.TagIdxUseless[tagName]; ok {
 		delete(cloneInner.TagIdxUseless, tagName)
@@ -123,4 +124,62 @@ func (self *CacheData) AddFriend(fId1 int64, fId2 int64) error {
 	self.inner = cloneInner
 
 	return err
+}
+
+func (self *CacheData) HandleIt(msgCache *MessageCache) []*MessageData {
+	var ud *UserData
+
+	msgs := make([]*MessageData, 0)
+
+	if ud, _ = self.inner.findUserId(msgCache.SenderId); ud == nil {
+		return nil
+	}
+
+	self.inner.LastIdMsgCache += 1
+	msgCache.Id = self.inner.LastIdMsgCache
+
+	for fId, _ := range msgCache.RecvId {
+		if _, ok := ud.Friends[fId]; ok {
+			msgData := MessageCache_2_MessageData(msgCache, true, fId)
+			msgData.Id = self.inner.LastIdMsgData + 1
+			msgData.TagIdx = self.inner.TagIdxUsable[msgData.Tag] + 1
+			msgCache.RecvId[fId] = true
+			self.inner.LastIdMsgData = msgData.Id
+			self.inner.TagIdxUsable[msgData.Tag] = msgData.TagIdx
+
+			msgs = append(msgs, msgData)
+		}
+	}
+	for gId, _ := range msgCache.GroupId {
+		if _, ok := ud.Groups[gId]; ok {
+			msgData := MessageCache_2_MessageData(msgCache, false, gId)
+			msgData.Id = self.inner.LastIdMsgData + 1
+			msgData.TagIdx = self.inner.TagIdxUsable[msgData.Tag] + 1
+			msgCache.GroupId[gId] = true
+			self.inner.LastIdMsgData = msgData.Id
+			self.inner.TagIdxUsable[msgData.Tag] = msgData.TagIdx
+
+			msgs = append(msgs, msgData)
+		}
+	}
+
+	return msgs
+}
+
+func MessageCache_2_MessageData(msgCache *MessageCache, isUser bool, recvId int64) *MessageData {
+	msgData := new(MessageData)
+
+	//msgData.Id
+	msgData.IdCache = msgCache.Id
+	if isUser {
+		msgData.Tag = TagName_User_Chat(msgCache.SenderId, recvId)
+	}
+	//msgData.TagIdx
+	msgData.Sender = msgCache.SenderId
+	msgData.Receiver = recvId
+	msgData.Message = msgCache.Message
+	msgData.Memo = msgCache.Memo
+	msgData.UpdateTime = time.Now()
+
+	return msgData
 }

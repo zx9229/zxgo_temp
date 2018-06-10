@@ -37,6 +37,23 @@ func TagName_Group_Push(gId int64) string {
 	return fmt.Sprintf("pg_%v_", gId)
 }
 
+func TagName_ReceiverIsUserOrGroup(tagName string) (isUser bool, isOk bool) {
+	//(isOk == true) : 这个tag的接收者, 要么是user, 要么是group.
+	//(isOk == false): 函数判定失败.
+	if strings.HasPrefix(tagName, "g_") || strings.HasPrefix(tagName, "pg_") {
+		isOk = true
+		isUser = false
+		return
+	} else if strings.HasPrefix(tagName, "u_") || strings.HasPrefix(tagName, "pu_") {
+		isOk = true
+		isUser = true
+		return
+	} else {
+		isOk = false
+		return
+	}
+}
+
 type TagNameInfo struct {
 	IsUserChat  bool //
 	ChatUserId1 int64
