@@ -6,24 +6,23 @@ import (
 
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
-	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxConnection"
 )
 
-type CacheOnline struct {
-	allConnection map[*TxConnection.TxConnection]bool
-	mapUser       map[int64]map[int]*TxConnection.TxConnection           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
-	mapGroup      map[int64]map[int64]map[int]*TxConnection.TxConnection //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
+type ConnectionManager struct {
+	allConnection map[*TxConnection]bool
+	mapUser       map[int64]map[int]*TxConnection           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
+	mapGroup      map[int64]map[int64]map[int]*TxConnection //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
 }
 
-func New_CacheOnline() *CacheOnline {
-	curData := new(CacheOnline)
-	curData.allConnection = make(map[*TxConnection.TxConnection]bool)
-	curData.mapUser = make(map[int64]map[int]*TxConnection.TxConnection)
-	curData.mapGroup = make(map[int64]map[int64]map[int]*TxConnection.TxConnection)
+func New_ConnectionManager() *ConnectionManager {
+	curData := new(ConnectionManager)
+	curData.allConnection = make(map[*TxConnection]bool)
+	curData.mapUser = make(map[int64]map[int]*TxConnection)
+	curData.mapGroup = make(map[int64]map[int64]map[int]*TxConnection)
 	return curData
 }
 
-func (self *CacheOnline) Flush(jsonStr string) error {
+func (self *ConnectionManager) Flush(jsonStr string) error {
 	var err error
 
 	tmpObj := new(CacheData.InnerCacheData)
@@ -42,11 +41,11 @@ func (self *CacheOnline) Flush(jsonStr string) error {
 		}
 	}
 
-	assistFun := func(mapCache map[int64]map[int]*TxConnection.TxConnection, conn *TxConnection.TxConnection) {
-		var temp map[int]*TxConnection.TxConnection
+	assistFun := func(mapCache map[int64]map[int]*TxConnection, conn *TxConnection) {
+		var temp map[int]*TxConnection
 		var isOk bool
 		if temp, isOk = mapCache[conn.UD.Id]; !isOk {
-			temp = make(map[int]*TxConnection.TxConnection)
+			temp = make(map[int]*TxConnection)
 			mapCache[conn.UD.Id] = temp
 		}
 		temp[conn.DeviceType] = conn
@@ -73,10 +72,10 @@ func (self *CacheOnline) Flush(jsonStr string) error {
 			continue
 		}
 		for gId := range conn.UD.Groups {
-			var temp map[int64]map[int]*TxConnection.TxConnection
+			var temp map[int64]map[int]*TxConnection
 			var isOk bool
 			if temp, isOk = self.mapGroup[gId]; !isOk {
-				temp = make(map[int64]map[int]*TxConnection.TxConnection)
+				temp = make(map[int64]map[int]*TxConnection)
 				self.mapGroup[gId] = temp
 			}
 			assistFun(temp, conn)
@@ -86,7 +85,7 @@ func (self *CacheOnline) Flush(jsonStr string) error {
 	return err
 }
 
-func (self *CacheOnline) Send(msgSlice []*ChatStruct.MessageData) {
+func (self *ConnectionManager) Send(msgSlice []*ChatStruct.MessageData) {
 
 	if msgSlice == nil {
 		return
@@ -115,7 +114,7 @@ func (self *CacheOnline) Send(msgSlice []*ChatStruct.MessageData) {
 	}
 }
 
-func (self *CacheOnline) HandleLogin(conn *TxConnection.TxConnection) {
+func (self *ConnectionManager) HandleLogin(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")
@@ -125,11 +124,11 @@ func (self *CacheOnline) HandleLogin(conn *TxConnection.TxConnection) {
 		panic("逻辑异常_2")
 	}
 
-	assistFun := func(mapCache map[int64]map[int]*TxConnection.TxConnection, conn *TxConnection.TxConnection) {
-		var temp map[int]*TxConnection.TxConnection
+	assistFun := func(mapCache map[int64]map[int]*TxConnection, conn *TxConnection) {
+		var temp map[int]*TxConnection
 		var isOk bool
 		if temp, isOk = mapCache[conn.UD.Id]; !isOk {
-			temp = make(map[int]*TxConnection.TxConnection)
+			temp = make(map[int]*TxConnection)
 			mapCache[conn.UD.Id] = temp
 		}
 		temp[conn.DeviceType] = conn
@@ -138,17 +137,17 @@ func (self *CacheOnline) HandleLogin(conn *TxConnection.TxConnection) {
 	assistFun(self.mapUser, conn)
 
 	for gId := range conn.UD.Groups {
-		var temp map[int64]map[int]*TxConnection.TxConnection
+		var temp map[int64]map[int]*TxConnection
 		var isOk bool
 		if temp, isOk = self.mapGroup[gId]; !isOk {
-			temp = make(map[int64]map[int]*TxConnection.TxConnection)
+			temp = make(map[int64]map[int]*TxConnection)
 			self.mapGroup[gId] = temp
 		}
 		assistFun(temp, conn)
 	}
 }
 
-func (self *CacheOnline) HandleLogout(conn *TxConnection.TxConnection) {
+func (self *ConnectionManager) HandleLogout(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")
@@ -165,7 +164,7 @@ func (self *CacheOnline) HandleLogout(conn *TxConnection.TxConnection) {
 	}
 }
 
-func (self *CacheOnline) HandleConnected(conn *TxConnection.TxConnection) {
+func (self *ConnectionManager) HandleConnected(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; ok {
 		panic("逻辑异常")
@@ -174,7 +173,7 @@ func (self *CacheOnline) HandleConnected(conn *TxConnection.TxConnection) {
 	self.allConnection[conn] = true
 }
 
-func (self *CacheOnline) HandleDisconnected(conn *TxConnection.TxConnection) {
+func (self *ConnectionManager) HandleDisconnected(conn *TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")

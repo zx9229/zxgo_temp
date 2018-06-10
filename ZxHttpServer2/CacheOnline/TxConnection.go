@@ -1,4 +1,4 @@
-package TxConnection
+package CacheOnline
 
 import (
 	"fmt"
@@ -12,31 +12,17 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-type ConnectionManager interface {
-	//连接创建时,送入管理器.
-	HandleConnected(*TxConnection)
-
-	// 连接登录时,送入管理器.
-	HandleLogin(*TxConnection)
-
-	// 连接登出时,送入管理器.
-	HandleLogout(*TxConnection)
-
-	// 连接关闭时,送入管理器.
-	HandleDisconnected(*TxConnection)
-}
-
 type TxConnection struct {
 	ws         *websocket.Conn
 	handles    map[reflect.Type]func(i interface{})
 	parser     *TxStruct.TxParser
 	cacheData  *CacheData.CacheData
-	manager    ConnectionManager
+	manager    *ConnectionManager
 	DeviceType int //(登录时,使用的)设备类型(手机/PC/网页/等).
 	UD         *ChatStruct.UserData
 }
 
-func New_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager ConnectionManager) *TxConnection {
+func New_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager *ConnectionManager) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws

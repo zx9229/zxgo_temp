@@ -5,20 +5,19 @@ import (
 
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheOnline"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/SimpleHttpServer"
-	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxConnection"
 
 	"golang.org/x/net/websocket"
 )
 
 type MyService struct {
 	httpServer *SimpleHttpServer.SimpleHttpServer
-	xxx        *CacheOnline.CacheOnline
+	xxx        *CacheOnline.ConnectionManager
 }
 
 func New_MyService(listenAddr string) *MyService {
 	curData := new(MyService)
 	curData.httpServer = SimpleHttpServer.New_SimpleHttpServer(listenAddr)
-	curData.xxx = CacheOnline.New_CacheOnline()
+	curData.xxx = CacheOnline.New_ConnectionManager()
 	return curData
 }
 
@@ -38,5 +37,5 @@ func (self *MyService) RunTLS(certFile string, keyFile string) error {
 }
 
 func (self *MyService) Handler_websocket(ws *websocket.Conn) {
-	TxConnection.New_TxConnection(ws, nil, nil, self.xxx)
+	CacheOnline.New_TxConnection(ws, nil, nil, self.xxx)
 }
