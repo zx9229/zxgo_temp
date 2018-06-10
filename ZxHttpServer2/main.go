@@ -1,22 +1,50 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 
-	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/MyService"
 )
 
+type ConfigData struct {
+	Host              string
+	Port              int
+	DB_DriverName     string
+	DB_DataSourceName string
+	DB_LocationName   string
+}
+
 func main() {
+	var cfgData ConfigData = ConfigData{}
+	var config_filename string = "./config.json"
+	if content, err := ioutil.ReadFile(config_filename); err != nil && err != io.EOF {
+		log.Println(fmt.Sprintf("读取配置文件出错: %v", err))
+		os.Exit(1)
+	} else {
+		if err := json.Unmarshal(content, &cfgData); err != nil {
+			log.Println(fmt.Sprintf("解析配置文件出错: %v", err))
+			os.Exit(1)
+		}
+	}
+
+	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
+	myWebService := MyService.New_MyService(listenAddr)
+	myWebService.Init()
+
 	var err error
-	cData := CacheData.New_CacheData()
-	if err = cData.Check(); true {
-		fmt.Println("1:", err)
+	if true {
+		err = myWebService.Run()
+	} else {
+		//go run C:\go\src\crypto\tls\generate_cert.go --host localhost
+		certFile := "cert.pem"
+		keyFile := "key.pem"
+		err = myWebService.RunTLS(certFile, keyFile)
 	}
-	if id, err := cData.AddUser("a", "p"); true {
-		fmt.Println("2:", id, err)
-	}
-	if err := cData.AddFriend(1, 2); true {
-		fmt.Println("3:", err)
-	}
-	fmt.Println("DONE.")
+	log.Println(err)
+	log.Println("will exit...")
 }

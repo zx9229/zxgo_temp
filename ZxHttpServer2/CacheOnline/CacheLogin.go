@@ -9,22 +9,18 @@ import (
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxConnection"
 )
 
-type LoginData struct {
-	DeviceType int //设备类型(多设备登录时)
-	ud         ChatStruct.UserData
-}
-
-func toLoginData(deviceType int, ud *ChatStruct.UserData) *LoginData {
-	curData := new(LoginData)
-	curData.DeviceType = deviceType
-	curData.ud = *ud
-	return curData
-}
-
 type CacheOnline struct {
 	allConnection map[*TxConnection.TxConnection]bool
 	mapUser       map[int64]map[int]*TxConnection.TxConnection           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
 	mapGroup      map[int64]map[int64]map[int]*TxConnection.TxConnection //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
+}
+
+func New_CacheOnline() *CacheOnline {
+	curData := new(CacheOnline)
+	curData.allConnection = make(map[*TxConnection.TxConnection]bool)
+	curData.mapUser = make(map[int64]map[int]*TxConnection.TxConnection)
+	curData.mapGroup = make(map[int64]map[int64]map[int]*TxConnection.TxConnection)
+	return curData
 }
 
 func (self *CacheOnline) Flush(jsonStr string) error {
@@ -169,7 +165,16 @@ func (self *CacheOnline) HandleLogout(conn *TxConnection.TxConnection) {
 	}
 }
 
-func (self *CacheOnline) HandleRemove(conn *TxConnection.TxConnection) {
+func (self *CacheOnline) HandleConnected(conn *TxConnection.TxConnection) {
+
+	if _, ok := self.allConnection[conn]; ok {
+		panic("逻辑异常")
+	}
+
+	self.allConnection[conn] = true
+}
+
+func (self *CacheOnline) HandleDisconnected(conn *TxConnection.TxConnection) {
 
 	if _, ok := self.allConnection[conn]; !ok {
 		panic("逻辑异常")

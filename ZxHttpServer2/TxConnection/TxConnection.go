@@ -36,7 +36,7 @@ type TxConnection struct {
 	UD         *ChatStruct.UserData
 }
 
-func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager ConnectionManager) *TxConnection {
+func New_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager ConnectionManager) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws
