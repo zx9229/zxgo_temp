@@ -7,30 +7,32 @@ import (
 	"reflect"
 
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
-	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheOnline"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxStruct"
 	"golang.org/x/net/websocket"
 )
 
 type TxConnection struct {
-	ws        *websocket.Conn
-	handles   map[reflect.Type]func(i interface{})
-	parser    *TxStruct.TxParser
-	ud        *ChatStruct.UserData
-	cacheData *CacheData.CacheData
-	cacheOL   *CacheOnline.CacheOnline
+	ws         *websocket.Conn
+	handles    map[reflect.Type]func(i interface{})
+	parser     *TxStruct.TxParser
+	cacheData  *CacheData.CacheData
+	DeviceType int //(登录时,使用的)设备类型(手机/PC/网页/等).
+	UD         *ChatStruct.UserData
+	CbLogin    func(conn *TxConnection) //登录成功的回调.
+	CbLogout   func(conn *TxConnection) //登出成功的回调.
+	CbRemove   func(conn *TxConnection) //移除连接的回调.
 }
 
-func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, cacheOL *CacheOnline.CacheOnline) *TxConnection {
+func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws
 	curData.handles = curData.CalcHandlerMap()
 	curData.parser = parser
-	curData.ud = nil
 	curData.cacheData = cacheData
-	curData.cacheOL = cacheOL
+	curData.DeviceType = 0
+	curData.UD = nil
 	//
 	go curData.Handler_websocket()
 	//
@@ -80,6 +82,10 @@ func (self *TxConnection) CalcHandlerMap() map[reflect.Type]func(i interface{}) 
 	mapData[reflect.ValueOf(TxStruct.LoginReq{}).Type()] = self.Handle_Parse_OK_LoginReq
 	//
 	return mapData
+}
+
+func (self *TxConnection) Send_Temp(v interface{}) {
+	self._websocket_Message_Send(v)
 }
 
 func (self *TxConnection) _websocket_Message_Send(v interface{}) {

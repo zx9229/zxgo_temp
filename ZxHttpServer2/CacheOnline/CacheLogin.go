@@ -6,7 +6,7 @@ import (
 
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
-	"golang.org/x/net/websocket"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxConnection"
 )
 
 type LoginData struct {
@@ -22,9 +22,9 @@ func toLoginData(deviceType int, ud *ChatStruct.UserData) *LoginData {
 }
 
 type CacheOnline struct {
-	mapSession map[*websocket.Conn]*LoginData              //登录的数据
-	mapUser    map[int64]map[int]*websocket.Conn           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
-	mapGroup   map[int64]map[int64]map[int]*websocket.Conn //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
+	allConnection map[*TxConnection.TxConnection]bool
+	mapUser       map[int64]map[int]*TxConnection.TxConnection           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
+	mapGroup      map[int64]map[int64]map[int]*TxConnection.TxConnection //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
 }
 
 func (self *CacheOnline) Flush(jsonStr string) error {
@@ -35,34 +35,36 @@ func (self *CacheOnline) Flush(jsonStr string) error {
 		return err
 	}
 
-	sliceToDel := make([]*websocket.Conn, 0) //当删除了一个/多个用户之后.
-	for ws, oldData := range self.mapSession {
-		if newUd, ok := tmpObj.AllUser[oldData.ud.Id]; ok {
-			self.mapSession[ws] = toLoginData(oldData.DeviceType, newUd)
-		} else {
-			sliceToDel = append(sliceToDel, ws)
+	for conn := range self.allConnection {
+		if conn.UD == nil {
+			continue
 		}
-	}
-	for _, conn := range sliceToDel {
-		delete(self.mapSession, conn)
+		if newUd, ok := tmpObj.AllUser[conn.UD.Id]; ok {
+			conn.UD = newUd
+		} else {
+			conn.UD = nil //当删除了一个/多个用户之后,对应的连接,就变成没有登录的连接了.
+		}
 	}
 
-	assistFun := func(mapCache map[int64]map[int]*websocket.Conn, data *LoginData, ws *websocket.Conn) {
-		var temp map[int]*websocket.Conn
+	assistFun := func(mapCache map[int64]map[int]*TxConnection.TxConnection, conn *TxConnection.TxConnection) {
+		var temp map[int]*TxConnection.TxConnection
 		var isOk bool
-		if temp, isOk = mapCache[data.ud.Id]; !isOk {
-			temp = make(map[int]*websocket.Conn)
-			mapCache[data.ud.Id] = temp
+		if temp, isOk = mapCache[conn.UD.Id]; !isOk {
+			temp = make(map[int]*TxConnection.TxConnection)
+			mapCache[conn.UD.Id] = temp
 		}
-		temp[data.DeviceType] = ws
+		temp[conn.DeviceType] = conn
 	}
 
 	//重新刷新user的cache.
 	for k := range self.mapUser { //clear
 		delete(self.mapUser, k)
 	}
-	for ws, data := range self.mapSession {
-		assistFun(self.mapUser, data, ws)
+	for conn := range self.allConnection {
+		if conn.UD == nil {
+			continue
+		}
+		assistFun(self.mapUser, conn)
 	}
 
 	//重新刷新group的cache.
@@ -70,15 +72,18 @@ func (self *CacheOnline) Flush(jsonStr string) error {
 		delete(self.mapGroup, k)
 	}
 
-	for ws, data := range self.mapSession {
-		for gId := range data.ud.Groups {
-			var temp map[int64]map[int]*websocket.Conn
+	for conn := range self.allConnection {
+		if conn.UD == nil {
+			continue
+		}
+		for gId := range conn.UD.Groups {
+			var temp map[int64]map[int]*TxConnection.TxConnection
 			var isOk bool
 			if temp, isOk = self.mapGroup[gId]; !isOk {
-				temp = make(map[int64]map[int]*websocket.Conn)
+				temp = make(map[int64]map[int]*TxConnection.TxConnection)
 				self.mapGroup[gId] = temp
 			}
-			assistFun(temp, data, ws)
+			assistFun(temp, conn)
 		}
 	}
 
@@ -95,15 +100,15 @@ func (self *CacheOnline) Send(msgSlice []*ChatStruct.MessageData) {
 		if isUser, ok := CacheData.TagName_ReceiverIsUserOrGroup(msgData.Tag); ok {
 			if isUser {
 				if temp, ok := self.mapUser[msgData.Receiver]; ok {
-					for _, ws := range temp {
-						websocket.Message.Send(ws, msgData)
+					for _, conn := range temp {
+						conn.Send_Temp(msgData)
 					}
 				}
 			} else {
 				if mapMember, ok := self.mapGroup[msgData.Receiver]; ok {
 					for _, temp := range mapMember {
-						for _, ws := range temp {
-							websocket.Message.Send(ws, msgData)
+						for _, conn := range temp {
+							conn.Send_Temp(msgData)
 						}
 					}
 				}
@@ -114,61 +119,68 @@ func (self *CacheOnline) Send(msgSlice []*ChatStruct.MessageData) {
 	}
 }
 
-func (self *CacheOnline) HandleLogin(ws *websocket.Conn, ud *ChatStruct.UserData, deviceType int) error {
-	var err error
+func (self *CacheOnline) HandleLogin(conn *TxConnection.TxConnection) {
 
-	if oldData, ok := self.mapSession[ws]; ok {
-		err = fmt.Errorf("已经登录userId=%v用户", oldData.ud.Id)
-		return err
+	if _, ok := self.allConnection[conn]; !ok {
+		panic("逻辑异常")
 	}
 
-	if temp, ok := self.mapUser[ud.Id]; ok {
-		if _, ok := temp[deviceType]; ok {
-			err = fmt.Errorf("已经登录userId=%v,deviceType=%v用户", ud.Id, deviceType)
-			return err
-		}
+	if conn.UD == nil || conn.DeviceType <= 0 {
+		panic("逻辑异常_2")
 	}
 
-	loginData := toLoginData(deviceType, ud)
-	self.mapSession[ws] = loginData
-
-	assistFun := func(mapCache map[int64]map[int]*websocket.Conn, data *LoginData, ws *websocket.Conn) {
-		var temp map[int]*websocket.Conn
+	assistFun := func(mapCache map[int64]map[int]*TxConnection.TxConnection, conn *TxConnection.TxConnection) {
+		var temp map[int]*TxConnection.TxConnection
 		var isOk bool
-		if temp, isOk = mapCache[data.ud.Id]; !isOk {
-			temp = make(map[int]*websocket.Conn)
-			mapCache[data.ud.Id] = temp
+		if temp, isOk = mapCache[conn.UD.Id]; !isOk {
+			temp = make(map[int]*TxConnection.TxConnection)
+			mapCache[conn.UD.Id] = temp
 		}
-		temp[data.DeviceType] = ws
+		temp[conn.DeviceType] = conn
 	}
 
-	assistFun(self.mapUser, loginData, ws)
+	assistFun(self.mapUser, conn)
 
-	for gId := range loginData.ud.Groups {
-		var temp map[int64]map[int]*websocket.Conn
+	for gId := range conn.UD.Groups {
+		var temp map[int64]map[int]*TxConnection.TxConnection
 		var isOk bool
 		if temp, isOk = self.mapGroup[gId]; !isOk {
-			temp = make(map[int64]map[int]*websocket.Conn)
+			temp = make(map[int64]map[int]*TxConnection.TxConnection)
 			self.mapGroup[gId] = temp
 		}
-		assistFun(temp, loginData, ws)
+		assistFun(temp, conn)
 	}
-
-	return err
 }
 
-func (self *CacheOnline) HandleLogout(ws *websocket.Conn) {
-	var data *LoginData
-	var isOk bool
-	if data, isOk = self.mapSession[ws]; !isOk {
-		return
+func (self *CacheOnline) HandleLogout(conn *TxConnection.TxConnection) {
+
+	if _, ok := self.allConnection[conn]; !ok {
+		panic("逻辑异常")
 	}
 
-	delete(self.mapSession, ws)
-
-	delete(self.mapUser[data.ud.Id], data.DeviceType)
-
-	for gId := range data.ud.Groups {
-		delete(self.mapGroup[gId][data.ud.Id], data.DeviceType)
+	if conn.UD == nil || conn.DeviceType <= 0 {
+		panic("代码没有设计好, 需要TxConnection调用完这个函数之后,再执行清理操作")
 	}
+
+	delete(self.mapUser[conn.UD.Id], conn.DeviceType)
+
+	for gId := range conn.UD.Groups {
+		delete(self.mapGroup[gId][conn.UD.Id], conn.DeviceType)
+	}
+}
+
+func (self *CacheOnline) HandleRemove(conn *TxConnection.TxConnection) {
+
+	if _, ok := self.allConnection[conn]; !ok {
+		panic("逻辑异常")
+	}
+
+	if conn.UD != nil {
+		self.HandleLogout(conn)
+	}
+
+	conn.UD = nil
+	conn.DeviceType = 0
+
+	delete(self.allConnection, conn)
 }
