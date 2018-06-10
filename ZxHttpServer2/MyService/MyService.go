@@ -17,7 +17,7 @@ type MyService struct {
 func New_MyService(listenAddr string) *MyService {
 	curData := new(MyService)
 	curData.httpServer = SimpleHttpServer.New_SimpleHttpServer(listenAddr)
-	curData.xxx = TxConnectionAndManager.New_TxConnectionManager()
+	curData.xxx = TxConnectionAndManager.New_TxConnectionManager(nil, nil)
 	return curData
 }
 
@@ -37,5 +37,5 @@ func (self *MyService) RunTLS(certFile string, keyFile string) error {
 }
 
 func (self *MyService) Handler_websocket(ws *websocket.Conn) {
-	TxConnectionAndManager.New_TxConnection(ws, nil, nil, self.xxx)
+	TxConnectionAndManager.New_TxConnection(ws, self.xxx)
 }

@@ -6,7 +6,6 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxStruct"
 	"golang.org/x/net/websocket"
@@ -21,21 +20,17 @@ import (
 type TxConnection struct {
 	ws         *websocket.Conn
 	handles    map[reflect.Type]func(i interface{})
-	parser     *TxStruct.TxParser
-	cacheData  *CacheData.CacheData
-	manager    *TxConnectionManager
+	mngr       *TxConnectionManager
 	DeviceType int //(登录时,使用的)设备类型(手机/PC/网页/等).
 	UD         *ChatStruct.UserData
 }
 
-func New_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager *TxConnectionManager) *TxConnection {
+func New_TxConnection(ws *websocket.Conn, manager *TxConnectionManager) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws
 	curData.handles = curData.CalcHandlerMap()
-	curData.parser = parser
-	curData.cacheData = cacheData
-	curData.manager = manager
+	curData.mngr = manager
 	curData.DeviceType = 0
 	curData.UD = nil
 	//
@@ -68,7 +63,7 @@ func (self *TxConnection) Handler_websocket() {
 		}
 		self.Handle_WebSocket_Receive(recvRawMessage)
 
-		if objData, objType, err = self.parser.ParseByteSlice(recvRawMessage); err != nil {
+		if objData, objType, err = self.mngr.parser.ParseByteSlice(recvRawMessage); err != nil {
 			self.Handle_Parse_Fail(recvRawMessage, err)
 			continue
 		}
@@ -115,7 +110,7 @@ func (self *TxConnection) Handle_WebSocket_Connected() {
 }
 
 func (self *TxConnection) Handle_WebSocket_Disconnected() {
-	self.manager.HandleDisconnected(self)
+	self.mngr.HandleDisconnected(self)
 	log.Println(fmt.Sprintf("断开连接:ws=[%p]", self.ws))
 }
 
@@ -153,7 +148,7 @@ func (self *TxConnection) Handle_Parse_OK_LoginReq(v interface{}) {
 			break
 		}
 		//TODO:
-		self.manager.HandleLogin(self)
+		self.mngr.HandleLogin(self)
 	}
 
 	self._websocket_Message_Send(TxStruct.ToJsonStr(rspObj))

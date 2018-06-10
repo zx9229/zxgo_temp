@@ -6,19 +6,26 @@ import (
 
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxStruct"
 )
 
 type TxConnectionManager struct {
+	parser        *TxStruct.TxParser   //管理器存储起来,让连接使用,因为所有的链接都会用它们.
+	cacheData     *CacheData.CacheData //管理器存储起来,让连接使用,因为所有的链接都会用它们.
 	allConnection map[*TxConnection]bool
 	mapUser       map[int64]map[int]*TxConnection           //计算出来的缓存数据(            int64=>用户名;int=>设备类型)
 	mapGroup      map[int64]map[int64]map[int]*TxConnection //计算出来的缓存数据(int64=>组ID;int64=>用户名;int=>设备类型)
 }
 
-func New_TxConnectionManager() *TxConnectionManager {
+func New_TxConnectionManager(parser *TxStruct.TxParser, cacheData *CacheData.CacheData) *TxConnectionManager {
 	curData := new(TxConnectionManager)
+	//
+	curData.parser = parser
+	curData.cacheData = cacheData
 	curData.allConnection = make(map[*TxConnection]bool)
 	curData.mapUser = make(map[int64]map[int]*TxConnection)
 	curData.mapGroup = make(map[int64]map[int64]map[int]*TxConnection)
+	//
 	return curData
 }
 
