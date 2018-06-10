@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
 )
 
 func main() {
 	var err error
-	cData := New_CacheData()
+	cData := CacheData.New_CacheData()
 	if err = cData.Check(); true {
 		fmt.Println("1:", err)
 	}

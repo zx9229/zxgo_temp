@@ -1,4 +1,4 @@
-package main
+package TxConnection
 
 import (
 	"fmt"
@@ -6,6 +6,9 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheOnline"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 	"github.com/zx9229/zxgo_temp/ZxHttpServer2/TxStruct"
 	"golang.org/x/net/websocket"
 )
@@ -14,12 +17,12 @@ type TxConnection struct {
 	ws        *websocket.Conn
 	handles   map[reflect.Type]func(i interface{})
 	parser    *TxStruct.TxParser
-	ud        *UserData
-	cacheData *CacheData
-	cacheOL   *CacheOnline
+	ud        *ChatStruct.UserData
+	cacheData *CacheData.CacheData
+	cacheOL   *CacheOnline.CacheOnline
 }
 
-func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData, cacheOL *CacheOnline) *TxConnection {
+func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, cacheOL *CacheOnline.CacheOnline) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws

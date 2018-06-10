@@ -1,10 +1,12 @@
-package main
+package CacheData
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 )
 
 type CacheData struct {
@@ -57,7 +59,7 @@ func (self *CacheData) AddUser(alias string, password string) (newUserId int64, 
 	}
 
 	cloneInner.LastIdUser += 1
-	newUd := New_UserData()
+	newUd := ChatStruct.New_UserData()
 	newUd.Id = cloneInner.LastIdUser
 	newUd.Alias = alias
 	newUd.Password = password
@@ -78,8 +80,8 @@ func (self *CacheData) AddUser(alias string, password string) (newUserId int64, 
 
 func (self *CacheData) AddFriend(fId1 int64, fId2 int64) error {
 	var err error
-	var ud1 *UserData
-	var ud2 *UserData
+	var ud1 *ChatStruct.UserData
+	var ud2 *ChatStruct.UserData
 
 	if ud1, err = self.inner.findUserId(fId1); err != nil {
 		return err
@@ -126,10 +128,10 @@ func (self *CacheData) AddFriend(fId1 int64, fId2 int64) error {
 	return err
 }
 
-func (self *CacheData) HandleIt(msgCache *MessageCache) []*MessageData {
-	var ud *UserData
+func (self *CacheData) HandleIt(msgCache *ChatStruct.MessageCache) []*ChatStruct.MessageData {
+	var ud *ChatStruct.UserData
 
-	msgs := make([]*MessageData, 0)
+	msgs := make([]*ChatStruct.MessageData, 0)
 
 	if ud, _ = self.inner.findUserId(msgCache.SenderId); ud == nil {
 		return nil
@@ -166,8 +168,8 @@ func (self *CacheData) HandleIt(msgCache *MessageCache) []*MessageData {
 	return msgs
 }
 
-func MessageCache_2_MessageData(msgCache *MessageCache, isUser bool, recvId int64) *MessageData {
-	msgData := new(MessageData)
+func MessageCache_2_MessageData(msgCache *ChatStruct.MessageCache, isUser bool, recvId int64) *ChatStruct.MessageData {
+	msgData := new(ChatStruct.MessageData)
 
 	//msgData.Id
 	msgData.IdCache = msgCache.Id

@@ -1,20 +1,22 @@
-package main
+package CacheData
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 )
 
 type InnerCacheData struct { //内存中的缓存数据.
-	AllUser        map[int64]*UserData  //所有的用户信息.
-	LastIdUser     int64                //最后一个创建的用户ID(允许删除用户,删除之后,这个ID就不能再用了,所以需要一个字段维护数据).
-	AllGroup       map[int64]*GroupData //所有的组信息.
-	LastIdGroup    int64                //最后一个创建的组ID.
-	TagIdxUsable   map[string]int64     //tag的最新序号.
-	TagIdxUseless  map[string]int64     //解除好友关系的tag移到这里来.
-	LastIdMsgCache int64                //最后一个MessageCache的ID.
-	LastIdMsgData  int64                //最后一个MessageData的ID.
+	AllUser        map[int64]*ChatStruct.UserData  //所有的用户信息.
+	LastIdUser     int64                           //最后一个创建的用户ID(允许删除用户,删除之后,这个ID就不能再用了,所以需要一个字段维护数据).
+	AllGroup       map[int64]*ChatStruct.GroupData //所有的组信息.
+	LastIdGroup    int64                           //最后一个创建的组ID.
+	TagIdxUsable   map[string]int64                //tag的最新序号.
+	TagIdxUseless  map[string]int64                //解除好友关系的tag移到这里来.
+	LastIdMsgCache int64                           //最后一个MessageCache的ID.
+	LastIdMsgData  int64                           //最后一个MessageData的ID.
 }
 
 const ROOT_USER_ID int64 = 1
@@ -22,13 +24,13 @@ const ROOT_USER_ID int64 = 1
 func new_InnerCacheData() *InnerCacheData {
 	curData := new(InnerCacheData)
 	//
-	curData.AllUser = make(map[int64]*UserData)
-	curData.AllGroup = make(map[int64]*GroupData)
+	curData.AllUser = make(map[int64]*ChatStruct.UserData)
+	curData.AllGroup = make(map[int64]*ChatStruct.GroupData)
 	curData.TagIdxUsable = make(map[string]int64)
 	curData.TagIdxUseless = make(map[string]int64)
 	//
 	if true {
-		rootUser := New_UserData()
+		rootUser := ChatStruct.New_UserData()
 		rootUser.Id = ROOT_USER_ID
 		rootUser.Alias = "root"
 		rootUser.Password = "toor"
@@ -57,8 +59,8 @@ func (self *InnerCacheData) clone() (cloneObj *InnerCacheData, err error) {
 func (self *InnerCacheData) checkFriend(uId1 int64, uId2 int64) error {
 	var err error
 	var ok bool
-	var ud1 *UserData
-	var ud2 *UserData
+	var ud1 *ChatStruct.UserData
+	var ud2 *ChatStruct.UserData
 
 	for _ = range "1" {
 
@@ -95,8 +97,8 @@ func (self *InnerCacheData) checkFriend(uId1 int64, uId2 int64) error {
 func (self *InnerCacheData) checkGroupMember(uId int64, gId int64) error {
 	var err error
 	var ok bool
-	var ud *UserData
-	var gd *GroupData
+	var ud *ChatStruct.UserData
+	var gd *ChatStruct.GroupData
 
 	for _ = range "1" {
 
@@ -136,7 +138,7 @@ func (self *InnerCacheData) checkGroupMember(uId int64, gId int64) error {
 func (self *InnerCacheData) checkUser(uId int64) error {
 	var err error
 	var ok bool
-	var ud *UserData
+	var ud *ChatStruct.UserData
 
 	for _ = range "1" {
 
@@ -168,7 +170,7 @@ func (self *InnerCacheData) checkUser(uId int64) error {
 func (self *InnerCacheData) checkGroup(gId int64) error {
 	var err error
 	var ok bool
-	var gd *GroupData
+	var gd *ChatStruct.GroupData
 
 	for _ = range "1" {
 
@@ -407,7 +409,7 @@ func (self *InnerCacheData) check() error {
 	return nil
 }
 
-func (self *InnerCacheData) findUserId(uId int64) (ud *UserData, err error) {
+func (self *InnerCacheData) findUserId(uId int64) (ud *ChatStruct.UserData, err error) {
 	if _ud, isOk := self.AllUser[uId]; !isOk {
 		err = fmt.Errorf("找不到userId=%v的用户", uId)
 	} else {
@@ -416,7 +418,7 @@ func (self *InnerCacheData) findUserId(uId int64) (ud *UserData, err error) {
 	return
 }
 
-func (self *InnerCacheData) findUserAlias(uAlias string) (ud *UserData, err error) {
+func (self *InnerCacheData) findUserAlias(uAlias string) (ud *ChatStruct.UserData, err error) {
 	for _, _ud := range self.AllUser {
 		if _ud.Alias == uAlias {
 			ud = _ud

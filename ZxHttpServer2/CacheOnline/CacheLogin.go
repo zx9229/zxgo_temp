@@ -1,18 +1,20 @@
-package main
+package CacheOnline
 
 import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/CacheData"
+	"github.com/zx9229/zxgo_temp/ZxHttpServer2/ChatStruct"
 	"golang.org/x/net/websocket"
 )
 
 type LoginData struct {
 	DeviceType int //设备类型(多设备登录时)
-	ud         UserData
+	ud         ChatStruct.UserData
 }
 
-func toLoginData(deviceType int, ud *UserData) *LoginData {
+func toLoginData(deviceType int, ud *ChatStruct.UserData) *LoginData {
 	curData := new(LoginData)
 	curData.DeviceType = deviceType
 	curData.ud = *ud
@@ -28,7 +30,7 @@ type CacheOnline struct {
 func (self *CacheOnline) Flush(jsonStr string) error {
 	var err error
 
-	tmpObj := new(InnerCacheData)
+	tmpObj := new(CacheData.InnerCacheData)
 	if err = json.Unmarshal([]byte(jsonStr), tmpObj); err != nil {
 		return err
 	}
@@ -83,14 +85,14 @@ func (self *CacheOnline) Flush(jsonStr string) error {
 	return err
 }
 
-func (self *CacheOnline) Send(msgSlice []*MessageData) {
+func (self *CacheOnline) Send(msgSlice []*ChatStruct.MessageData) {
 
 	if msgSlice == nil {
 		return
 	}
 
 	for _, msgData := range msgSlice {
-		if isUser, ok := TagName_ReceiverIsUserOrGroup(msgData.Tag); ok {
+		if isUser, ok := CacheData.TagName_ReceiverIsUserOrGroup(msgData.Tag); ok {
 			if isUser {
 				if temp, ok := self.mapUser[msgData.Receiver]; ok {
 					for _, ws := range temp {
@@ -112,7 +114,7 @@ func (self *CacheOnline) Send(msgSlice []*MessageData) {
 	}
 }
 
-func (self *CacheOnline) HandleLogin(ws *websocket.Conn, ud *UserData, deviceType int) error {
+func (self *CacheOnline) HandleLogin(ws *websocket.Conn, ud *ChatStruct.UserData, deviceType int) error {
 	var err error
 
 	if oldData, ok := self.mapSession[ws]; ok {
