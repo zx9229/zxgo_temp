@@ -12,28 +12,42 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+type ConnectionManager interface {
+	//连接创建时,送入管理器.
+	HandleConnected(*TxConnection)
+
+	// 连接登录时,送入管理器.
+	HandleLogin(*TxConnection)
+
+	// 连接登出时,送入管理器.
+	HandleLogout(*TxConnection)
+
+	// 连接关闭时,送入管理器.
+	HandleDisconnected(*TxConnection)
+}
+
 type TxConnection struct {
 	ws         *websocket.Conn
 	handles    map[reflect.Type]func(i interface{})
 	parser     *TxStruct.TxParser
 	cacheData  *CacheData.CacheData
+	manager    ConnectionManager
 	DeviceType int //(登录时,使用的)设备类型(手机/PC/网页/等).
 	UD         *ChatStruct.UserData
-	CbLogin    func(conn *TxConnection) //登录成功的回调.
-	CbLogout   func(conn *TxConnection) //登出成功的回调.
-	CbRemove   func(conn *TxConnection) //移除连接的回调.
 }
 
-func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData) *TxConnection {
+func new_TxConnection(ws *websocket.Conn, parser *TxStruct.TxParser, cacheData *CacheData.CacheData, manager ConnectionManager) *TxConnection {
 	curData := new(TxConnection)
 	//
 	curData.ws = ws
 	curData.handles = curData.CalcHandlerMap()
 	curData.parser = parser
 	curData.cacheData = cacheData
+	curData.manager = manager
 	curData.DeviceType = 0
 	curData.UD = nil
 	//
+	manager.HandleConnected(curData)
 	go curData.Handler_websocket()
 	//
 	return curData
@@ -109,6 +123,7 @@ func (self *TxConnection) Handle_WebSocket_Connected() {
 }
 
 func (self *TxConnection) Handle_WebSocket_Disconnected() {
+	self.manager.HandleDisconnected(self)
 	log.Println(fmt.Sprintf("断开连接:ws=[%p]", self.ws))
 }
 
@@ -140,5 +155,14 @@ func (self *TxConnection) Handle_Parse_OK_LoginReq(v interface{}) {
 	//	rspObj.Code = 0
 	//	rspObj.Message = "登录成功"
 	//}
+
+	for _ = range "1" {
+		if self.UD != nil {
+			break
+		}
+		//TODO:
+		self.manager.HandleLogin(self)
+	}
+
 	self._websocket_Message_Send(TxStruct.ToJsonStr(rspObj))
 }
