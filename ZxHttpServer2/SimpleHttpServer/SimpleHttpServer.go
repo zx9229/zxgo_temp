@@ -9,13 +9,13 @@ type SimpleHttpServer struct {
 }
 
 func New_SimpleHttpServer(listenAddr string) *SimpleHttpServer {
-	var newData *SimpleHttpServer = new(SimpleHttpServer)
+	var curData *SimpleHttpServer = new(SimpleHttpServer)
 	//
-	newData.httpServer = new(http.Server)
-	newData.httpServer.Addr = listenAddr
-	newData.httpServer.Handler = http.NewServeMux()
+	curData.httpServer = new(http.Server)
+	curData.httpServer.Addr = listenAddr
+	curData.httpServer.Handler = http.NewServeMux()
 	//
-	return newData
+	return curData
 }
 
 func (self *SimpleHttpServer) GetHttpServeMux() *http.ServeMux {
