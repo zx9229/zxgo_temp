@@ -3,91 +3,42 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"net/http"
-	"time"
+	"log"
+	"os"
 )
 
-func ReportReq_2_ReportData(req *ReportReq) *ReportData {
-	data := new(ReportData)
-	//
-	data.Id = 0
-	data.Time = time.Time{}
-	//
-	data.UserId = req.UserId
-	data.RefId = req.RefId
-	data.RefTime = req.RefTime
-	data.Status = req.Status
-	data.Message = req.Message
-	data.Group1 = req.Group1
-	data.Group2 = req.Group2
-	data.Group3 = req.Group3
-	data.Group4 = req.Group4
-	//
-	return data
-}
-
-type DataCenter struct {
-	myDb *MyXormDb
-}
-
-func New_DataCenter() *DataCenter {
-	curData := new(DataCenter)
-	curData.myDb = new_MyXormDb()
-	return curData
-
-}
-
-func (self *DataCenter) Handler_ROOT(w http.ResponseWriter, r *http.Request) {
-	var err error
-	var byteSlice []byte
-	var dataRsp *ReportRsp = new(ReportRsp)
-	//curl -d "{\"a\":123}" http://localhost:8080
-	for _ = range "1" {
-		if r.Method != "POST" {
-			break
-		}
-
-		defer r.Body.Close()
-		if byteSlice, err = ioutil.ReadAll(r.Body); err != nil {
-			break
-		}
-
-		dataReq := new(ReportReq)
-		if err = json.Unmarshal(byteSlice, dataReq); err != nil {
-			break
-		}
-
-		//TODO:校验通过.
-		if dataRsp.Id, err = InsertOne(self.myDb.engine, ReportReq_2_ReportData(dataReq)); err != nil {
-			break
-		}
-		//
-		dataRsp.UserId = dataReq.UserId
-		dataRsp.RefId = dataReq.RefId
-		dataRsp.Code = 0
-		dataRsp.Message = "SUCCESS"
-	}
-
-	if dataRsp.Id <= 0 {
-		dataRsp.Code = 2
-		dataRsp.Message = err.Error()
-	}
-
-	if bytes, err := json.Marshal(dataRsp); err != nil {
-		panic(err)
-	} else {
-		fmt.Fprintf(w, string(bytes))
-	}
+type ConfigData struct {
+	Host              string
+	Port              int
+	DB_DriverName     string
+	DB_DataSourceName string
+	DB_LocationName   string
 }
 
 func main() {
-	var listenAddr string = "localhost:8080"
-	simpleHttpServer := New_SimpleHttpServer(listenAddr)
-	dataCenter := New_DataCenter()
-	if true {
-		dataCenter.myDb.Init()
+	var cfgData ConfigData = ConfigData{}
+	var config_filename string = "./config.json"
+	if content, err := ioutil.ReadFile(config_filename); err != nil && err != io.EOF {
+		log.Println(fmt.Sprintf("读取配置文件出错: %v", err))
+		os.Exit(1)
+	} else {
+		if err := json.Unmarshal(content, &cfgData); err != nil {
+			log.Println(fmt.Sprintf("解析配置文件出错: %v", err))
+			os.Exit(1)
+		}
 	}
+
+	dataCenter := New_DataCenter()
+	if err := dataCenter.Init(cfgData.DB_DriverName, cfgData.DB_DataSourceName, cfgData.DB_LocationName); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
+	simpleHttpServer := New_SimpleHttpServer(listenAddr)
 	simpleHttpServer.GetHttpServeMux().HandleFunc("/", dataCenter.Handler_ROOT)
-	simpleHttpServer.Run()
+	err := simpleHttpServer.Run()
+	log.Println(err)
 }

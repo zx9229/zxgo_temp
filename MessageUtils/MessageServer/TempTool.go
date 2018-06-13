@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-xorm/xorm"
 	"github.com/zx9229/zxgo/zxxorm"
@@ -35,4 +36,23 @@ func InsertOne(engine *xorm.Engine, data *ReportData) (id int64, err error) {
 		id = data.Id
 	}
 	return
+}
+
+func ReportReq_2_ReportData(req *ReportReq) *ReportData {
+	data := new(ReportData)
+	//
+	data.Id = 0
+	data.Time = time.Time{}
+	//
+	data.UserId = req.UserId
+	data.RefId = req.RefId
+	data.RefTime = req.RefTime
+	data.Status = req.Status
+	data.Message = req.Message
+	data.Group1 = req.Group1
+	data.Group2 = req.Group2
+	data.Group3 = req.Group3
+	data.Group4 = req.Group4
+	//
+	return data
 }
