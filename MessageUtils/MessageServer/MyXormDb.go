@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"time"
 
@@ -47,24 +46,4 @@ func (self *MyXormDb) Init() {
 	if err = self.engine.Sync2(beans...); err != nil { //同步数据库结构
 		log.Println(err)
 	}
-}
-
-func QueryAndGetId(session *xorm.Session, userId int64, refId int64) (id int64, err error) {
-	dataSlice := make([]*ReportData, 0)
-	queryCond := new(ReportData)
-	queryCond.UserId = userId
-	queryCond.RefId = refId
-	if err = session.Find(&dataSlice, queryCond); err != nil {
-		return
-	}
-	if len(dataSlice) != 1 {
-		err = errors.New("个数有问题")
-		return
-	}
-	if dataSlice[0].Id <= 0 {
-		err = errors.New("数据有问题")
-		return
-	}
-	id = dataSlice[0].Id
-	return
 }

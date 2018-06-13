@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/zx9229/zxgo/zxxorm"
 )
 
 func ReportReq_2_ReportData(req *ReportReq) *ReportData {
@@ -61,29 +59,9 @@ func (self *DataCenter) Handler_ROOT(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//TODO:校验通过.
-		session := self.myDb.engine.NewSession()
-		defer func() {
-			session.Close()
-		}()
-		var needRollback bool = true
-		defer func() {
-			if needRollback {
-				session.Rollback()
-			}
-		}()
-		if err = session.Begin(); err != nil {
+		if dataRsp.Id, err = InsertOne(self.myDb.engine, ReportReq_2_ReportData(dataReq)); err != nil {
 			break
 		}
-		if err = zxxorm.SessionInsertOne(session, ReportReq_2_ReportData(dataReq)); err != nil {
-			break
-		}
-		if dataRsp.Id, err = QueryAndGetId(session, dataReq.UserId, dataReq.RefId); err != nil {
-			break
-		}
-		if err = session.Commit(); err != nil {
-			break
-		}
-		needRollback = false
 		//
 		dataRsp.UserId = dataReq.UserId
 		dataRsp.RefId = dataReq.RefId
@@ -91,7 +69,7 @@ func (self *DataCenter) Handler_ROOT(w http.ResponseWriter, r *http.Request) {
 		dataRsp.Message = "SUCCESS"
 	}
 
-	if dataRsp.Id == 0 {
+	if dataRsp.Id <= 0 {
 		dataRsp.Code = 2
 		dataRsp.Message = err.Error()
 	}
