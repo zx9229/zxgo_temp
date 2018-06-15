@@ -10,6 +10,11 @@ import (
 	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
 
+//服务器必须要有紧急通道,如果大量的数据一直提交不上来的话,需要通过紧急通道告诉服务器
+//因为人员肯定会去看服务器里的信息,所以紧急信息可以被人员看到,从而被人们所知.
+//建议: body里面写上紧急信息的内容,服务器专门有一个紧急信息表,key是int64,value是string,
+//这样,只要服务器能收到数据,就肯定能被存下来.
+
 func main() {
 	dataProxy := new_DataProxy()
 	if err := dataProxy.Init("sqlite3", "test_proxy.db", "Asia/Shanghai"); err != nil {
