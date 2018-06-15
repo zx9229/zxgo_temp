@@ -38,7 +38,7 @@ func main() {
 
 	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
 	simpleHttpServer := New_SimpleHttpServer(listenAddr)
-	simpleHttpServer.GetHttpServeMux().HandleFunc("/", dataCenter.Handler_ROOT)
+	simpleHttpServer.GetHttpServeMux().HandleFunc("/ReportReq", dataCenter.Handler_ReportReq)
 	err := simpleHttpServer.Run()
 	log.Println(err)
 }

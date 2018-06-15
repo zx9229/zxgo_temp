@@ -10,6 +10,7 @@ import (
 	"github.com/go-xorm/core"
 	"github.com/go-xorm/xorm"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
 
 type DataCenter struct {
@@ -41,9 +42,9 @@ func (self *DataCenter) Init(driverName string, dataSourceName string, locationN
 		}
 
 		beans := make([]interface{}, 0)
-		beans = append(beans, new(ReportReq))
-		beans = append(beans, new(ReportRsp))
-		beans = append(beans, new(ReportData))
+		beans = append(beans, new(TxStruct.ReportReq))
+		beans = append(beans, new(TxStruct.ReportRsp))
+		beans = append(beans, new(TxStruct.ReportData))
 
 		if err = self.engine.CreateTables(beans...); err != nil { //应该是:只要存在这个tablename,就跳过它.
 			break
@@ -56,10 +57,10 @@ func (self *DataCenter) Init(driverName string, dataSourceName string, locationN
 	return err
 }
 
-func (self *DataCenter) Handler_ROOT(w http.ResponseWriter, r *http.Request) {
+func (self *DataCenter) Handler_ReportReq(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var byteSlice []byte
-	var dataRsp *ReportRsp = new(ReportRsp)
+	var dataRsp *TxStruct.ReportRsp = new(TxStruct.ReportRsp)
 	//curl -d "{\"a\":123}" http://localhost:8080
 	for _ = range "1" {
 		if r.Method != "POST" {
@@ -71,7 +72,7 @@ func (self *DataCenter) Handler_ROOT(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		dataReq := new(ReportReq)
+		dataReq := new(TxStruct.ReportReq)
 		if err = json.Unmarshal(byteSlice, dataReq); err != nil {
 			break
 		}

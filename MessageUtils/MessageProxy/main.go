@@ -4,69 +4,81 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
-	"os"
 	"strings"
-	"time"
+
+	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
 
-type ReportReq struct {
-	UserId  int64
-	RefId   int64     //rowId
-	RefTime time.Time //rowUpdateTime
-	Status  int       // (三态) 0=>正常;1=>警告;其他值=>错误
-	Message string
-	Group1  string
-	Group2  string
-	Group3  string
-	Group4  string
-}
-
-type ReportRsp struct {
-	UserId  int64
-	RefId   int64
-	Id      int64 // 0=>没有入库;正数=>写入数据库
-	Code    int   // 0=>处理成功;其他值=>处理失败
-	Message string
-}
-
 func main() {
-	httpPostForm()
+	dataProxy := new_DataProxy()
+	if err := dataProxy.Init("sqlite3", "test_proxy.db", "Asia/Shanghai"); err != nil {
+		panic(err)
+	}
+	if slice_, err := dataProxy.QueryData(); err != nil {
+		for _, item := range slice_ {
+			for cnt := 0; xxx(&item, cnt); cnt++ {
+				if 100 < cnt {
+					panic(cnt)
+				}
+			}
+		}
+	}
 }
 
-func httpPostForm() {
-	data := ReportReq{}
-	data.UserId = 1
-	data.RefId = 6
-	data.Message = "qwert"
-	bytes, err := json.Marshal(data)
-	jsonStr := string(bytes)
-	r := strings.NewReader(jsonStr)
+func xxx(reqRsp *ReportReqRsp, alreadyTryCnt int) bool {
+	//返回值(bool)=>是否还需要重新处理它(true=>需要重新处理).
 
-	resp, err := http.Post("http://localhost:8080", "application/json", r)
+	var err error
+	var byteSlice []byte
 
+	url := fmt.Sprintf("http://%s:%d/ReportReq", "localhost", 8080)
+
+	var reqData *TxStruct.ReportReq = reqRsp.ToReq()
+	byteSlice, err = json.Marshal(reqData)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(2)
+		reqRsp.IsHandled = 1
+		reqRsp.RspId = -1
+		reqRsp.RspCode = 1
+		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportReq失败,err=%v", err)
+		return false
+	}
+
+	r := strings.NewReader(string(byteSlice))
+	resp, err := http.Post(url, "application/json", r)
+	if err != nil {
+		return true
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		// handle error
+	if byteSlice, err = ioutil.ReadAll(resp.Body); err != nil {
+		if 3 < alreadyTryCnt {
+			reqRsp.IsHandled = 1
+			reqRsp.RspId = -1
+			reqRsp.RspCode = 1
+			reqRsp.Message = fmt.Sprintf("[Proxy]ReadAll失败,err=%v", err)
+			return false
+		} else {
+			return true
+		}
 	}
-	fmt.Println("=================")
-	fmt.Println(string(body))
 
-}
+	rspData := new(TxStruct.ReportRsp)
+	if err = json.Unmarshal(byteSlice, rspData); err != nil {
+		reqRsp.IsHandled = 1
+		reqRsp.RspId = -1
+		reqRsp.RspCode = 1
+		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
+		return false
+	}
 
-func test() {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		panic("Poor soul, here is what you got: " + err.Error())
+	if err = reqRsp.FillWithRsp(rspData, false); err != nil {
+		reqRsp.IsHandled = 1
+		reqRsp.RspId = -1
+		reqRsp.RspCode = 1
+		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
+		return false
 	}
-	for _, inter := range interfaces {
-		fmt.Println(inter.Name, inter.HardwareAddr)
-	}
+
+	return false
 }

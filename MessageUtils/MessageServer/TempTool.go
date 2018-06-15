@@ -6,9 +6,10 @@ import (
 
 	"github.com/go-xorm/xorm"
 	"github.com/zx9229/zxgo/zxxorm"
+	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
 
-func InsertOne(engine *xorm.Engine, data *ReportData) (id int64, err error) {
+func InsertOne(engine *xorm.Engine, data *TxStruct.ReportData) (id int64, err error) {
 	session := engine.NewSession()
 	defer session.Close()
 	var needRollback bool = true
@@ -38,8 +39,8 @@ func InsertOne(engine *xorm.Engine, data *ReportData) (id int64, err error) {
 	return
 }
 
-func ReportReq_2_ReportData(req *ReportReq) *ReportData {
-	data := new(ReportData)
+func ReportReq_2_ReportData(req *TxStruct.ReportReq) *TxStruct.ReportData {
+	data := new(TxStruct.ReportData)
 	//
 	data.Id = 0
 	data.Time = time.Time{}
