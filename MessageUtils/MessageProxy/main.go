@@ -47,7 +47,8 @@ func main() {
 		panic(err)
 	}
 
-	if err = PrepareHostPort(dataProxy, *hostPtr, *portPtr); err != nil {
+	var cfg *ConfigInfo
+	if cfg, err = PrepareConfig(dataProxy, *hostPtr, *portPtr, *intervalPtr); err != nil {
 		panic(err)
 	}
 
@@ -57,12 +58,13 @@ func main() {
 
 	for {
 		dataProxy.FlushExeInfo()
-		if slice_, err := dataProxy.QueryData(); err == nil {
+		if slice_, err := dataProxy.QueryProxyReqRsp(); err == nil {
 			for _, item := range slice_ {
-				for cnt := 0; xxx(&item, cnt); cnt++ {
-					if 100 < cnt {
-						panic(cnt)
-					}
+				if doReportAction(cfg.Host, cfg.Port, &item) {
+					continue
+				}
+				if err = dataProxy.UpdateData(&item); err != nil {
+					panic(err)
 				}
 			}
 		}
@@ -89,85 +91,100 @@ func PrepareWorkDir() error {
 	return err
 }
 
-func PrepareHostPort(dataProxy *DataProxy, host string, port int) error {
-	var err error
-	var cfgInfo *ConfigInfo
-	if port == 0 { //TODO:不知道怎么判断,临时用(port==0)代表(程序以不带参数的方式启动)
-		if cfgInfo, err = dataProxy.LoadConfigInfo(); err != nil {
-			return err
-		}
-	} else {
-		cfgInfo = new(ConfigInfo)
-		cfgInfo.Host = host
-		cfgInfo.Port = port
+func CheckConfigPassed(cfg *ConfigInfo) bool {
+	if cfg == nil {
+		return false
 	}
-	if len(cfgInfo.Host) <= 0 || !(0 < cfgInfo.Port && cfgInfo.Port < 65536) {
-		err = fmt.Errorf("data abnormal, Host=%v, Port=%v", cfgInfo.Host, cfgInfo.Port)
-		return err
+	if !(0 < cfg.Port && cfg.Port < 65536) {
+		return false
 	}
-	if port != 0 {
-		if err = dataProxy.SaveConfigInfo(cfgInfo); err != nil {
-			return err
-		}
-	}
-	return err
+	return true
 }
 
-func xxx(reqRsp *TxStruct.ProxyReqRsp, alreadyTryCnt int) bool {
+func PrepareConfig(dataProxy *DataProxy, host string, port int, interval int) (cfg *ConfigInfo, err error) {
+	if 0 < flag.NFlag() {
+		cfg = new(ConfigInfo)
+		cfg.Host = host
+		cfg.Port = port
+		cfg.Interval = interval
+	} else {
+		if cfg, err = dataProxy.LoadConfigInfo(); err != nil {
+			return
+		}
+	}
+	if !CheckConfigPassed(cfg) {
+		err = errors.New("not CheckConfigPassed")
+	}
+	if 0 < flag.NFlag() {
+		if err = dataProxy.SaveConfigInfo(cfg); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func doReportAction(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool {
 	//返回值(bool)=>是否还需要重新处理它(true=>需要重新处理).
+	var needRetry bool = false
 
 	var err error
 	var byteSlice []byte
 
-	url := fmt.Sprintf("http://%s:%d/ReportReq", "localhost", 8080)
+	url := fmt.Sprintf("http://%s:%d/ReportReq", host, port)
 
-	var reqData *TxStruct.ReportReq = ProxyReqRsp_ToReq(reqRsp)
-	byteSlice, err = json.Marshal(reqData)
-	if err != nil {
-		reqRsp.IsPending = false
-		reqRsp.RspId = -1
-		reqRsp.RspCode = 1
-		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportReq失败,err=%v", err)
-		return false
-	}
+	for _ = range "1" {
+		var reqData *TxStruct.ReportReq = ProxyReqRsp_ToReq(reqRsp)
+		if byteSlice, err = json.Marshal(reqData); err != nil {
+			reqRsp.IsPending = false
+			reqRsp.RspId = -1
+			reqRsp.RspCode = 1
+			reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportReq失败,err=%v", err)
+			//
+			needRetry = false
+			break
+		}
 
-	r := strings.NewReader(string(byteSlice))
-	resp, err := http.Post(url, "application/json", r)
-	if err != nil {
-		return true
-	}
+		var resp *http.Response
+		if resp, err = http.Post(url, "application/json", strings.NewReader(string(byteSlice))); err != nil {
+			needRetry = true
+			break
+		}
 
-	defer resp.Body.Close()
-	if byteSlice, err = ioutil.ReadAll(resp.Body); err != nil {
-		if 3 < alreadyTryCnt {
+		defer resp.Body.Close()
+
+		if byteSlice, err = ioutil.ReadAll(resp.Body); err != nil {
 			reqRsp.IsPending = false
 			reqRsp.RspId = -1
 			reqRsp.RspCode = 1
 			reqRsp.Message = fmt.Sprintf("[Proxy]ReadAll失败,err=%v", err)
-			return false
-		} else {
-			return true
+			//
+			needRetry = false
+			break
 		}
-	}
 
-	rspData := new(TxStruct.ReportRsp)
-	if err = json.Unmarshal(byteSlice, rspData); err != nil {
-		reqRsp.IsPending = false
-		reqRsp.RspId = -1
-		reqRsp.RspCode = 1
-		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
-		return false
-	}
+		rspData := new(TxStruct.ReportRsp)
+		if err = json.Unmarshal(byteSlice, rspData); err != nil {
+			reqRsp.IsPending = false
+			reqRsp.RspId = -1
+			reqRsp.RspCode = 1
+			reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
+			//
+			needRetry = false
+			break
+		}
 
-	if err = ProxyReqRsp_FillWithRsp(reqRsp, rspData, false); err != nil {
-		reqRsp.IsPending = false
-		reqRsp.RspId = -1
-		reqRsp.RspCode = 1
-		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
-		return false
+		if err = ProxyReqRsp_FillWithRsp(reqRsp, rspData, false); err != nil {
+			reqRsp.IsPending = false
+			reqRsp.RspId = -1
+			reqRsp.RspCode = 1
+			reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
+			//
+			needRetry = false
+			break
+		}
+		needRetry = false
 	}
-
-	return false
+	return needRetry
 }
 
 func ReadFromStdin() (Host string, Port int) {

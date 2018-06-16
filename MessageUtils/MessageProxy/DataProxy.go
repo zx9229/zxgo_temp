@@ -57,12 +57,16 @@ func (self *DataProxy) Init(driverName string, dataSourceName string) error {
 	return err
 }
 
-func (self *DataProxy) QueryData() (slice_ []TxStruct.ProxyReqRsp, err error) {
+func (self *DataProxy) QueryProxyReqRsp() (slice_ []TxStruct.ProxyReqRsp, err error) {
 	slice_ = make([]TxStruct.ProxyReqRsp, 0)
 	if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
 		slice_ = nil
 	}
 	return
+}
+
+func (self *DataProxy) UpdateData(data *TxStruct.ProxyReqRsp) error {
+	return zxxorm.Update(self.engine, data)
 }
 
 func (self *DataProxy) LoadConfigInfo() (cfgInfo *ConfigInfo, err error) {
