@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-xorm/xorm"
 	_ "github.com/mattn/go-sqlite3"
@@ -20,10 +21,12 @@ const (
 )
 
 func main() {
+	tp1 := time.Now()
+
 	debugPtr := flag.Bool("debug", false, "debug mode")
-	jsonPtr := flag.String("json", "", "show file size")
+	jsonPtr := flag.String("json", "", "data insert to database")
 	stodPtr := flag.Bool("stod", false, "[single quotation marks] to [double quotation marks]")
-	helpPtr := flag.Bool("help", false, "show this help")
+	helpPtr := flag.Bool("help", false, `show this help. "{ 'Status':0, 'Message':'', 'Group1':'' }"`)
 	//所有标志都声明完成以后，调用 flag.Parse() 来执行命令行解析。
 	flag.Parse()
 
@@ -41,14 +44,14 @@ func main() {
 
 	if *debugPtr {
 		if *stodPtr {
-			fmt.Println("======")
+			fmt.Println("===+===")
 			fmt.Println(*jsonPtr)
-			fmt.Println("======")
+			fmt.Println("===-===")
 			fmt.Println("=>")
 		}
-		fmt.Println("======")
+		fmt.Println("===+===")
 		fmt.Println(jsonStr)
-		fmt.Println("======")
+		fmt.Println("===-===")
 	}
 
 	var err error
@@ -59,13 +62,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = XXX(data); err != nil {
-		fmt.Fprintln(os.Stderr, "[zxcvb]", err)
-		os.Exit(1)
+	tp2 := time.Now()
+	err = InsertToDb(data)
+	tp3 := time.Now()
+
+	if *debugPtr {
+		fmt.Println(fmt.Sprintf("t2-t1=%v, t3-t2=%v, t3-t1=%v", tp2.Sub(tp1), tp3.Sub(tp2), tp3.Sub(tp1)))
 	}
 
-	fmt.Println("DONE.")
-	os.Exit(0)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "[InsertToDb]", err)
+		os.Exit(1)
+	}
 }
 
 func calcDataSourceName() (name string, err error) {
@@ -76,7 +84,7 @@ func calcDataSourceName() (name string, err error) {
 	return
 }
 
-func XXX(data *TxStruct.ProxyReqRsp) error {
+func InsertToDb(data *TxStruct.ProxyReqRsp) error {
 	var err error
 	var dataSourceName string
 	var engine *xorm.Engine
@@ -87,6 +95,13 @@ func XXX(data *TxStruct.ProxyReqRsp) error {
 
 	if engine, err = xorm.NewEngine(DRIVER_NAME, dataSourceName); err != nil {
 		return err
+	}
+
+	if location, err2 := time.LoadLocation("Local"); err2 != nil {
+		err = err2
+		return err
+	} else {
+		engine.TZLocation = location
 	}
 
 	defer engine.Close()
