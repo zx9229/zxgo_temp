@@ -72,7 +72,7 @@ func (self *ConfigInfo) From(fields []ConfigInfoField) {
 }
 
 func (self *ConfigInfo) To() []ConfigInfoField {
-	mapData := make(map[string]string)
+	mapData := make(map[string]string) //TODO:待优化成一个通用函数.
 	mapData["Host"] = self.Host
 	mapData["Port"] = strconv.Itoa(self.Port)
 	mapData["LocationName"] = self.LocationName
@@ -99,7 +99,7 @@ type ExeInfo struct {
 }
 
 func (self *ExeInfo) To() []ExeInfoField {
-	mapData := make(map[string]string)
+	mapData := make(map[string]string) //TODO:待优化成一个通用函数.
 	mapData["Pid"] = strconv.Itoa(self.Pid)
 	mapData["Pname"] = self.Pname
 	mapData["Exe"] = self.Exe

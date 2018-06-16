@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
@@ -57,16 +58,18 @@ func main() {
 		panic(err)
 	}
 
-	os.Exit(0)
-
-	if slice_, err := dataProxy.QueryData(); err != nil {
-		for _, item := range slice_ {
-			for cnt := 0; xxx(&item, cnt); cnt++ {
-				if 100 < cnt {
-					panic(cnt)
+	for {
+		dataProxy.FlushExeInfo()
+		if slice_, err := dataProxy.QueryData(); err != nil {
+			for _, item := range slice_ {
+				for cnt := 0; xxx(&item, cnt); cnt++ {
+					if 100 < cnt {
+						panic(cnt)
+					}
 				}
 			}
 		}
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 
