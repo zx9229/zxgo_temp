@@ -43,3 +43,20 @@ type TxData struct {
 	Type string
 	Data interface{}
 }
+
+type ProxyReqRsp struct {
+	UserId     int64     //(req)
+	RefId      int64     `xorm:"notnull pk autoincr"` //(req)rowId
+	RefTime    time.Time `xorm:"created"`             //这个Field将在Insert时自动赋值为当前时间
+	Status     int       //(req) (三态) 0=>正常;1=>警告;其他值=>错误
+	Message    string    //(req)
+	Group1     string    //(req)
+	Group2     string    //(req)
+	Group3     string    //(req)
+	Group4     string    //(req)
+	IsHandled  int       //是否处理过了(0:尚未处理)
+	RspId      int64     //(rsp)
+	RspCode    int       //(rsp)
+	RspMessage string    //(rsp)
+	UpdateTime time.Time `xorm:"updated"` //这个Field将在Insert或Update时自动赋值为当前时间
+}

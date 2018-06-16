@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/zx9229/zxgo/zxxorm"
-
 	"github.com/go-xorm/core"
 	"github.com/go-xorm/xorm"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/zx9229/zxgo/zxxorm"
+	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
 
 type DataProxy struct {
@@ -44,8 +44,8 @@ func (self *DataProxy) Init(driverName string, dataSourceName string, locationNa
 
 		beans := make([]interface{}, 0)
 		beans = append(beans, &ConfigInfoField{})
-		beans = append(beans, &ExeInfoField{})
-		beans = append(beans, new(ReportReqRsp))
+		beans = append(beans, new(ExeInfoField))
+		beans = append(beans, new(TxStruct.ProxyReqRsp))
 
 		if err = self.engine.CreateTables(beans...); err != nil { //应该是:只要存在这个tablename,就跳过它.
 			break
@@ -58,8 +58,8 @@ func (self *DataProxy) Init(driverName string, dataSourceName string, locationNa
 	return err
 }
 
-func (self *DataProxy) QueryData() (slice_ []ReportReqRsp, err error) {
-	slice_ = make([]ReportReqRsp, 0)
+func (self *DataProxy) QueryData() (slice_ []TxStruct.ProxyReqRsp, err error) {
+	slice_ = make([]TxStruct.ProxyReqRsp, 0)
 	if err = self.engine.In("is_handled", 0).Find(&slice_); err != nil { //TODO:字符串可能会变的.
 		slice_ = nil
 	}

@@ -73,7 +73,7 @@ func main() {
 	}
 }
 
-func xxx(reqRsp *ReportReqRsp, alreadyTryCnt int) bool {
+func xxx(reqRsp *TxStruct.ProxyReqRsp, alreadyTryCnt int) bool {
 	//返回值(bool)=>是否还需要重新处理它(true=>需要重新处理).
 
 	var err error
@@ -81,7 +81,7 @@ func xxx(reqRsp *ReportReqRsp, alreadyTryCnt int) bool {
 
 	url := fmt.Sprintf("http://%s:%d/ReportReq", "localhost", 8080)
 
-	var reqData *TxStruct.ReportReq = reqRsp.ToReq()
+	var reqData *TxStruct.ReportReq = ProxyReqRsp_ToReq(reqRsp)
 	byteSlice, err = json.Marshal(reqData)
 	if err != nil {
 		reqRsp.IsHandled = 1
@@ -119,7 +119,7 @@ func xxx(reqRsp *ReportReqRsp, alreadyTryCnt int) bool {
 		return false
 	}
 
-	if err = reqRsp.FillWithRsp(rspData, false); err != nil {
+	if err = ProxyReqRsp_FillWithRsp(reqRsp, rspData, false); err != nil {
 		reqRsp.IsHandled = 1
 		reqRsp.RspId = -1
 		reqRsp.RspCode = 1
