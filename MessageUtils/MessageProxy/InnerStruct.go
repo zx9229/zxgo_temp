@@ -2,15 +2,13 @@ package main
 
 import (
 	"errors"
+	"strconv"
 	"time"
+
+	"github.com/zx9229/zxgo"
 
 	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
-
-type KeyValue struct {
-	Key   string `xorm:"notnull pk unique"`
-	Value string
-}
 
 type ReportReqRsp struct {
 	UserId     int64     //(req)
@@ -51,4 +49,66 @@ func (self *ReportReqRsp) FillWithRsp(data *TxStruct.ReportRsp, doCheck bool) er
 	self.RspCode = data.Code
 	self.RspMessage = data.Message
 	return nil
+}
+
+type ConfigInfoField struct {
+	Key        string    `xorm:"notnull pk unique"`
+	Value      string    //字段的值.
+	UpdateTIme time.Time `xorm:"updated"`
+}
+
+type ConfigInfo struct {
+	Host         string
+	Port         int
+	LocationName string
+}
+
+func (self *ConfigInfo) From(fields []ConfigInfoField) {
+	allKv := make(map[string]string)
+	for _, field := range fields {
+		allKv[field.Key] = field.Value
+	}
+	zxgo.ModifyByMap(self, allKv, true)
+}
+
+func (self *ConfigInfo) To() []ConfigInfoField {
+	mapData := make(map[string]string)
+	mapData["Host"] = self.Host
+	mapData["Port"] = strconv.Itoa(self.Port)
+	mapData["LocationName"] = self.LocationName
+	//
+	slice_ := make([]ConfigInfoField, 0)
+	for k, v := range mapData {
+		slice_ = append(slice_, ConfigInfoField{Key: k, Value: v})
+	}
+	//
+	return slice_
+}
+
+type ExeInfoField struct {
+	Key        string    `xorm:"notnull pk unique"`
+	Value      string    //字段的值.
+	UpdateTIme time.Time `xorm:"updated"`
+}
+
+type ExeInfo struct {
+	Pid     int
+	Pname   string
+	Exe     string
+	Workdir string
+}
+
+func (self *ExeInfo) To() []ExeInfoField {
+	mapData := make(map[string]string)
+	mapData["Pid"] = strconv.Itoa(self.Pid)
+	mapData["Pname"] = self.Pname
+	mapData["Exe"] = self.Exe
+	mapData["Workdir"] = self.Workdir
+	//
+	slice_ := make([]ExeInfoField, 0)
+	for k, v := range mapData {
+		slice_ = append(slice_, ExeInfoField{Key: k, Value: v})
+	}
+	//
+	return slice_
 }
