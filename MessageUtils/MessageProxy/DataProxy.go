@@ -30,6 +30,7 @@ func (self *DataProxy) Init(driverName string, dataSourceName string) error {
 		if self.engine, err = xorm.NewEngine(driverName, dataSourceName); err != nil {
 			break
 		}
+		//self.engine.ShowSQL()
 
 		self.engine.SetMapper(core.GonicMapper{}) //支持struct为驼峰式命名,表结构为下划线命名之间的转换,同时对于特定词支持更好.
 
@@ -58,24 +59,7 @@ func (self *DataProxy) Init(driverName string, dataSourceName string) error {
 
 func (self *DataProxy) QueryData() (slice_ []TxStruct.ProxyReqRsp, err error) {
 	slice_ = make([]TxStruct.ProxyReqRsp, 0)
-	//if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
-	if err = self.engine.Find(&slice_); err != nil {
-		slice_ = nil
-	}
-	return
-}
-
-func (self *DataProxy) TEST() (slice_ []TxStruct.ProxyReqRsp, err error) {
-	tmp := new(TxStruct.ProxyReqRsp)
-	tmp.Message = "qwert"
-	tmp.IsPending = 1
-	if err = zxxorm.EngineInsertOne(self.engine, tmp); err != nil {
-		panic(err)
-	}
-	slice_ = make([]TxStruct.ProxyReqRsp, 0)
-	//if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
-	if err = self.engine.Find(&slice_); err != nil {
-		panic(err)
+	if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
 		slice_ = nil
 	}
 	return

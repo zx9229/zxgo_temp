@@ -57,7 +57,7 @@ func main() {
 
 	for {
 		dataProxy.FlushExeInfo()
-		if slice_, err := dataProxy.TEST(); err != nil {
+		if slice_, err := dataProxy.QueryData(); err == nil {
 			for _, item := range slice_ {
 				for cnt := 0; xxx(&item, cnt); cnt++ {
 					if 100 < cnt {
@@ -124,7 +124,7 @@ func xxx(reqRsp *TxStruct.ProxyReqRsp, alreadyTryCnt int) bool {
 	var reqData *TxStruct.ReportReq = ProxyReqRsp_ToReq(reqRsp)
 	byteSlice, err = json.Marshal(reqData)
 	if err != nil {
-		reqRsp.IsPending = 0
+		reqRsp.IsPending = false
 		reqRsp.RspId = -1
 		reqRsp.RspCode = 1
 		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportReq失败,err=%v", err)
@@ -140,7 +140,7 @@ func xxx(reqRsp *TxStruct.ProxyReqRsp, alreadyTryCnt int) bool {
 	defer resp.Body.Close()
 	if byteSlice, err = ioutil.ReadAll(resp.Body); err != nil {
 		if 3 < alreadyTryCnt {
-			reqRsp.IsPending = 0
+			reqRsp.IsPending = false
 			reqRsp.RspId = -1
 			reqRsp.RspCode = 1
 			reqRsp.Message = fmt.Sprintf("[Proxy]ReadAll失败,err=%v", err)
@@ -152,7 +152,7 @@ func xxx(reqRsp *TxStruct.ProxyReqRsp, alreadyTryCnt int) bool {
 
 	rspData := new(TxStruct.ReportRsp)
 	if err = json.Unmarshal(byteSlice, rspData); err != nil {
-		reqRsp.IsPending = 0
+		reqRsp.IsPending = false
 		reqRsp.RspId = -1
 		reqRsp.RspCode = 1
 		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
@@ -160,7 +160,7 @@ func xxx(reqRsp *TxStruct.ProxyReqRsp, alreadyTryCnt int) bool {
 	}
 
 	if err = ProxyReqRsp_FillWithRsp(reqRsp, rspData, false); err != nil {
-		reqRsp.IsPending = 0
+		reqRsp.IsPending = false
 		reqRsp.RspId = -1
 		reqRsp.RspCode = 1
 		reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)

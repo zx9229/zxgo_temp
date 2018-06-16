@@ -59,7 +59,7 @@ type ProxyReqRsp struct {
 	Group2     string    //(req)
 	Group3     string    //(req)
 	Group4     string    //(req)
-	IsPending  int       `xorm:"notnull"` //是否需要处理(true:尚未处理)
+	IsPending  bool      `xorm:"notnull"` //是否需要处理(true:尚未处理)
 	RspId      int64     //(rsp)
 	RspCode    int       //(rsp)
 	RspMessage string    //(rsp)
