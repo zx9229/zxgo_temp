@@ -33,7 +33,7 @@ func main() {
 	}
 
 	var jsonStr string
-	if *debugPtr {
+	if *stodPtr {
 		jsonStr = strings.Replace(*jsonPtr, `'`, `"`, -1)
 	} else {
 		jsonStr = *jsonPtr
