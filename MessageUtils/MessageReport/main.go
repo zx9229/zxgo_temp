@@ -56,6 +56,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "[Unmarshal]", err)
 		os.Exit(1)
 	}
+	data.IsPending = true
 
 	tp2 := time.Now()
 	err = InsertToDb(data)

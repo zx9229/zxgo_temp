@@ -40,9 +40,8 @@ type ConfigInfoField struct {
 }
 
 type ConfigInfo struct {
-	Host         string
-	Port         int
-	LocationName string
+	Host string
+	Port int
 }
 
 func (self *ConfigInfo) From(fields []ConfigInfoField) {
@@ -57,7 +56,6 @@ func (self *ConfigInfo) To() []ConfigInfoField {
 	mapData := make(map[string]string) //TODO:待优化成一个通用函数.
 	mapData["Host"] = self.Host
 	mapData["Port"] = strconv.Itoa(self.Port)
-	mapData["LocationName"] = self.LocationName
 	//
 	slice_ := make([]ConfigInfoField, 0)
 	for k, v := range mapData {

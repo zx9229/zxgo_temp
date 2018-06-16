@@ -23,7 +23,7 @@ func new_DataProxy() *DataProxy {
 
 }
 
-func (self *DataProxy) Init(driverName string, dataSourceName string, locationName string) error {
+func (self *DataProxy) Init(driverName string, dataSourceName string) error {
 	var err error
 
 	for _ = range "1" {
@@ -33,13 +33,11 @@ func (self *DataProxy) Init(driverName string, dataSourceName string, locationNa
 
 		self.engine.SetMapper(core.GonicMapper{}) //支持struct为驼峰式命名,表结构为下划线命名之间的转换,同时对于特定词支持更好.
 
-		if 0 < len(locationName) {
-			if location, err2 := time.LoadLocation(locationName); err2 != nil {
-				err = err2
-				break
-			} else {
-				self.engine.TZLocation = location
-			}
+		if location, err2 := time.LoadLocation("Local"); err2 != nil {
+			err = err2
+			break
+		} else {
+			self.engine.TZLocation = location
 		}
 
 		beans := make([]interface{}, 0)
@@ -60,7 +58,24 @@ func (self *DataProxy) Init(driverName string, dataSourceName string, locationNa
 
 func (self *DataProxy) QueryData() (slice_ []TxStruct.ProxyReqRsp, err error) {
 	slice_ = make([]TxStruct.ProxyReqRsp, 0)
-	if err = self.engine.In("is_handled", 0).Find(&slice_); err != nil { //TODO:字符串可能会变的.
+	//if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
+	if err = self.engine.Find(&slice_); err != nil {
+		slice_ = nil
+	}
+	return
+}
+
+func (self *DataProxy) TEST() (slice_ []TxStruct.ProxyReqRsp, err error) {
+	tmp := new(TxStruct.ProxyReqRsp)
+	tmp.Message = "qwert"
+	tmp.IsPending = 1
+	if err = zxxorm.EngineInsertOne(self.engine, tmp); err != nil {
+		panic(err)
+	}
+	slice_ = make([]TxStruct.ProxyReqRsp, 0)
+	//if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
+	if err = self.engine.Find(&slice_); err != nil {
+		panic(err)
 		slice_ = nil
 	}
 	return
