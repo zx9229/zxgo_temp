@@ -15,11 +15,6 @@ import (
 	"github.com/zx9229/zxgo_temp/MessageUtils/TxStruct"
 )
 
-const (
-	DRIVER_NAME      = "sqlite3"
-	DATA_SOURCE_NAME = "test_proxy.db"
-)
-
 func main() {
 	tp1 := time.Now()
 
@@ -80,7 +75,7 @@ func calcDataSourceName() (name string, err error) {
 	if name, err = filepath.Abs(filepath.Dir(os.Args[0])); err != nil {
 		return
 	}
-	name = filepath.Join(name, DATA_SOURCE_NAME)
+	name = filepath.Join(name, TxStruct.DATA_SOURCE_NAME)
 	return
 }
 
@@ -93,7 +88,7 @@ func InsertToDb(data *TxStruct.ProxyReqRsp) error {
 		return err
 	}
 
-	if engine, err = xorm.NewEngine(DRIVER_NAME, dataSourceName); err != nil {
+	if engine, err = xorm.NewEngine(TxStruct.DRIVER_NAME, dataSourceName); err != nil {
 		return err
 	}
 
