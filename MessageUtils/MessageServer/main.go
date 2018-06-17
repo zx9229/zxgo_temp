@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/zx9229/zxgo_temp/MessageUtils/MessageServer/SimpleHttpServer"
 )
 
 type ConfigData struct {
@@ -37,7 +39,7 @@ func main() {
 	}
 
 	listenAddr := fmt.Sprintf("%s:%d", cfgData.Host, cfgData.Port)
-	simpleHttpServer := New_SimpleHttpServer(listenAddr)
+	simpleHttpServer := SimpleHttpServer.New_SimpleHttpServer(listenAddr)
 	simpleHttpServer.GetHttpServeMux().HandleFunc("/ReportReq", dataCenter.Handler_ReportReq)
 	err := simpleHttpServer.Run()
 	log.Println(err)
