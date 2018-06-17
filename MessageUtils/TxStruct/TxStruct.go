@@ -51,15 +51,15 @@ type TxData struct {
 
 type ProxyReqRsp struct {
 	UserId     int64     `xorm:"notnull"`             //(req)
-	RefId      int64     `xorm:"notnull pk autoincr"` //(req)rowId
-	RefTime    time.Time `xorm:"created"`             //这个Field将在Insert时自动赋值为当前时间
-	Status     int       `xorm:"notnull"`             //(req) (三态) 0=>正常;1=>警告;其他值=>错误
+	RefId      int64     `xorm:"notnull pk autoincr"` //(req)row_id(数据库里的第几行)
+	RefTime    time.Time `xorm:"created"`             //(req)这个Field将在Insert时自动赋值为当前时间
+	Status     int       `xorm:"notnull"`             //(req)(三态)0=>正常;1=>警告;其他值=>错误
 	Message    string    //(req)
 	Group1     string    //(req)
 	Group2     string    //(req)
 	Group3     string    //(req)
 	Group4     string    //(req)
-	IsPending  bool      `xorm:"notnull"` //是否需要处理(true:尚未处理)
+	IsHandled  bool      `xorm:"notnull"` //(是否)已经处理过了(true:已经处理过了)
 	RspId      int64     //(rsp)
 	RspCode    int       //(rsp)
 	RspMessage string    //(rsp)

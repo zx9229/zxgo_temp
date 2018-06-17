@@ -78,8 +78,8 @@ func main() {
 				for !ReportDataFinish(cfg.Host, cfg.Port, &item) {
 					time.Sleep(time.Duration(*argData.retryIntervalPtr) * time.Millisecond)
 				}
-				if err = dataProxy.UpdateProxyReqRsp(&item); err != nil {
-					panic(err)
+				if affected, err := dataProxy.UpdateProxyReqRsp(&item); err != nil || affected != 1 {
+					panic(fmt.Sprintf("update,affected=%v,err=%v", affected, err))
 				}
 			}
 		}
@@ -164,9 +164,11 @@ func PrepareConfig(dataProxy *DataProxy, argData *ArgData) (cfg *ConfigInfo, err
 }
 
 func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool {
-	//返回值(bool)=>是否还需要重新处理它(true=>需要重新处理).
 	var isFinish bool = false
-
+	const (
+		ERROR_RspId   = -1
+		ERROR_RspCode = -1
+	)
 	var err error
 	var byteSlice []byte
 
@@ -175,10 +177,10 @@ func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool 
 	for _ = range "1" {
 		var reqData *TxStruct.ReportReq = ProxyReqRsp_ToReq(reqRsp)
 		if byteSlice, err = json.Marshal(reqData); err != nil {
-			reqRsp.IsPending = false
-			reqRsp.RspId = -1
-			reqRsp.RspCode = 1
-			reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportReq失败,err=%v", err)
+			reqRsp.IsHandled = true
+			reqRsp.RspId = ERROR_RspId
+			reqRsp.RspCode = ERROR_RspCode
+			reqRsp.Message = fmt.Sprintf("[Proxy]json.Marshal,err=%v", err)
 			//
 			isFinish = true
 			break
@@ -193,10 +195,10 @@ func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool 
 		defer resp.Body.Close()
 
 		if byteSlice, err = ioutil.ReadAll(resp.Body); err != nil {
-			reqRsp.IsPending = false
-			reqRsp.RspId = -1
-			reqRsp.RspCode = 1
-			reqRsp.Message = fmt.Sprintf("[Proxy]ReadAll失败,err=%v", err)
+			reqRsp.IsHandled = true
+			reqRsp.RspId = ERROR_RspId
+			reqRsp.RspCode = ERROR_RspCode
+			reqRsp.Message = fmt.Sprintf("[Proxy]ioutil.ReadAll,err=%v", err)
 			//
 			isFinish = true
 			break
@@ -204,25 +206,26 @@ func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool 
 
 		rspData := new(TxStruct.ReportRsp)
 		if err = json.Unmarshal(byteSlice, rspData); err != nil {
-			reqRsp.IsPending = false
-			reqRsp.RspId = -1
-			reqRsp.RspCode = 1
-			reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
+			reqRsp.IsHandled = true
+			reqRsp.RspId = ERROR_RspId
+			reqRsp.RspCode = ERROR_RspCode
+			reqRsp.Message = fmt.Sprintf("[Proxy]json.Unmarshal,err=%v", err)
 			//
 			isFinish = true
 			break
 		}
 
 		if err = ProxyReqRsp_FillWithRsp(reqRsp, rspData, false); err != nil {
-			reqRsp.IsPending = false
-			reqRsp.RspId = -1
-			reqRsp.RspCode = 1
-			reqRsp.Message = fmt.Sprintf("[Proxy]转换成ReportRsp失败,err=%v", err)
+			reqRsp.IsHandled = true
+			reqRsp.RspId = ERROR_RspId
+			reqRsp.RspCode = ERROR_RspCode
+			reqRsp.Message = fmt.Sprintf("[Proxy]ProxyReqRsp_FillWithRsp,err=%v", err)
 			//
 			isFinish = true
 			break
 		}
-		reqRsp.IsPending = false
+
+		reqRsp.IsHandled = true
 		isFinish = true
 	}
 	return isFinish

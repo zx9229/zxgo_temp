@@ -65,20 +65,14 @@ func (self *DataProxy) Init(driverName string, dataSourceName string) error {
 
 func (self *DataProxy) QueryProxyReqRsp() (slice_ []TxStruct.ProxyReqRsp, err error) {
 	slice_ = make([]TxStruct.ProxyReqRsp, 0)
-	if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsPending: true}); err != nil {
+	if err = self.engine.UseBool().Find(&slice_, &TxStruct.ProxyReqRsp{IsHandled: false}); err != nil {
 		slice_ = nil
 	}
 	return
 }
 
-func (self *DataProxy) UpdateProxyReqRsp(data *TxStruct.ProxyReqRsp) error {
-	var err error
-	var affected int64
-	affected, err = zxxorm.EngineUpdateByPk(self.engine, data)
-	if err == nil && affected <= 0 {
-		panic("没有更新任何数据")
-	}
-	return err
+func (self *DataProxy) UpdateProxyReqRsp(data *TxStruct.ProxyReqRsp) (affected int64, err error) {
+	return zxxorm.EngineUpdateByPk(self.engine, data)
 }
 
 func (self *DataProxy) LoadConfigInfo() (cfgInfo *ConfigInfo, err error) {
