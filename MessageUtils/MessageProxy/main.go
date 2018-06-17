@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ type ArgData struct {
 	portPtr          *int
 	scanIntervalPtr  *int //扫描间隔(相邻的2次扫描SQLITE的间隔).
 	retryIntervalPtr *int //重试间隔(发往服务器失败的时候,重试的间隔).
+	debugPtr         *bool
 }
 
 func main() {
@@ -39,8 +41,9 @@ func main() {
 	argData.helpPtr = flag.Bool("help", false, "show this help.")
 	argData.hostPtr = flag.String("host", "localhost", "set the server address")
 	argData.portPtr = flag.Int("port", 0, "set the server port")
-	argData.scanIntervalPtr = flag.Int("scan", 500, "set the scan interval(ms)")
-	argData.retryIntervalPtr = flag.Int("retry", 5000, "set the retry interval(ms)")
+	argData.scanIntervalPtr = flag.Int("scan", 1, "set the scan interval(second)")
+	argData.retryIntervalPtr = flag.Int("retry", 5, "set the retry interval(second)")
+	argData.debugPtr = flag.Bool("debug", false, "debug mode.")
 	flag.Parse()
 	if *argData.helpPtr {
 		flag.Usage()
@@ -71,19 +74,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	num := 0
 	for {
-		dataProxy.FlushExeInfo()
+		num = (num + 1) % 5
+		if num == 0 {
+			if *argData.debugPtr {
+				log.Println("FlushExeInfo")
+			}
+			dataProxy.FlushExeInfo()
+		}
 		if slice_, err := dataProxy.QueryProxyReqRsp(); err == nil {
 			for _, item := range slice_ {
-				for !ReportDataFinish(cfg.Host, cfg.Port, &item) {
-					time.Sleep(time.Duration(*argData.retryIntervalPtr) * time.Millisecond)
+				for !ReportDataFinish(cfg.Host, cfg.Port, &item, *argData.debugPtr) {
+					time.Sleep(time.Duration(*argData.retryIntervalPtr) * time.Second)
 				}
 				if affected, err := dataProxy.UpdateProxyReqRsp(&item); err != nil || affected != 1 {
+					if *argData.debugPtr {
+						log.Println(fmt.Printf("UpdateProxyReqRsp,affected=%v,err=%v", affected, err))
+					}
 					panic(fmt.Sprintf("update,affected=%v,err=%v", affected, err))
 				}
 			}
 		}
-		time.Sleep(time.Duration(*argData.scanIntervalPtr) * time.Millisecond)
+		time.Sleep(time.Duration(*argData.scanIntervalPtr) * time.Second)
 	}
 }
 
@@ -163,7 +176,7 @@ func PrepareConfig(dataProxy *DataProxy, argData *ArgData) (cfg *ConfigInfo, err
 	return
 }
 
-func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool {
+func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp, debugMode bool) bool {
 	var isFinish bool = false
 	const (
 		ERROR_RspId   = -1
@@ -227,6 +240,15 @@ func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool 
 
 		reqRsp.IsHandled = true
 		isFinish = true
+	}
+	if debugMode {
+		var debugMessage string
+		if err != nil {
+			debugMessage = fmt.Sprintf("[x] UserId=%v, RefId=%v, err=%v", reqRsp.UserId, reqRsp.RefId, err)
+		} else {
+			debugMessage = fmt.Sprintf("[v] UserId=%v, RefId=%v, RspId=%v", reqRsp.UserId, reqRsp.RefId, reqRsp.RspId)
+		}
+		log.Println(debugMessage)
 	}
 	return isFinish
 }
