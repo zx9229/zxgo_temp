@@ -82,6 +82,14 @@ type ExeInfo struct {
 	Workdir string
 }
 
+func (self *ExeInfo) From(fields []ExeInfoField) {
+	allKv := make(map[string]string)
+	for _, field := range fields {
+		allKv[field.Key] = field.Value
+	}
+	zxgo.ModifyByMap(self, allKv, true)
+}
+
 func (self *ExeInfo) To() []ExeInfoField {
 	mapData := make(map[string]string) //TODO:待优化成一个通用函数.
 	mapData["Pid"] = strconv.Itoa(self.Pid)
