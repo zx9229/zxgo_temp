@@ -72,7 +72,13 @@ func (self *DataProxy) QueryProxyReqRsp() (slice_ []TxStruct.ProxyReqRsp, err er
 }
 
 func (self *DataProxy) UpdateProxyReqRsp(data *TxStruct.ProxyReqRsp) error {
-	return zxxorm.Update(self.engine, data)
+	var err error
+	var affected int64
+	affected, err = zxxorm.EngineUpdateByPk(self.engine, data)
+	if err == nil && affected <= 0 {
+		panic("没有更新任何数据")
+	}
+	return err
 }
 
 func (self *DataProxy) LoadConfigInfo() (cfgInfo *ConfigInfo, err error) {

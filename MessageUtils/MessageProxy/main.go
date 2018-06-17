@@ -222,6 +222,7 @@ func ReportDataFinish(host string, port int, reqRsp *TxStruct.ProxyReqRsp) bool 
 			isFinish = true
 			break
 		}
+		reqRsp.IsPending = false
 		isFinish = true
 	}
 	return isFinish
