@@ -40,9 +40,10 @@ type ConfigInfoField struct {
 }
 
 type ConfigInfo struct {
-	Host     string
-	Port     int
-	Interval int
+	Host          string
+	Port          int
+	ScanInterval  int
+	RetryInterval int
 }
 
 func (self *ConfigInfo) From(fields []ConfigInfoField) {
@@ -57,7 +58,8 @@ func (self *ConfigInfo) To() []ConfigInfoField {
 	mapData := make(map[string]string) //TODO:待优化成一个通用函数.
 	mapData["Host"] = self.Host
 	mapData["Port"] = strconv.Itoa(self.Port)
-	mapData["Interval"] = strconv.Itoa(self.Interval)
+	mapData["ScanInterval"] = strconv.Itoa(self.ScanInterval)
+	mapData["RetryInterval"] = strconv.Itoa(self.RetryInterval)
 	//
 	slice_ := make([]ConfigInfoField, 0)
 	for k, v := range mapData {

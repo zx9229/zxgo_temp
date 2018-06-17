@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,6 +28,11 @@ func (self *DataProxy) Init(driverName string, dataSourceName string) error {
 	var err error
 
 	for _ = range "1" {
+		if self.engine != nil {
+			err = errors.New("Has been initialized.")
+			break
+		}
+
 		if self.engine, err = xorm.NewEngine(driverName, dataSourceName); err != nil {
 			break
 		}
@@ -65,7 +71,7 @@ func (self *DataProxy) QueryProxyReqRsp() (slice_ []TxStruct.ProxyReqRsp, err er
 	return
 }
 
-func (self *DataProxy) UpdateData(data *TxStruct.ProxyReqRsp) error {
+func (self *DataProxy) UpdateProxyReqRsp(data *TxStruct.ProxyReqRsp) error {
 	return zxxorm.Update(self.engine, data)
 }
 
