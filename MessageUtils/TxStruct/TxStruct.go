@@ -103,3 +103,9 @@ type AgentInfo struct {
 	CreateTime time.Time `xorm:"created"`
 	UpdateTime time.Time `xorm:"updated"`
 }
+
+//客户端发过来一个消息,服务端解析消息失败,此时也要告诉客户端,就是返回这个消息.
+type UnknownError struct {
+	TN         string
+	RawMessage string
+}
