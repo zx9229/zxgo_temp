@@ -9,6 +9,27 @@ const (
 	DATA_SOURCE_NAME = "test_proxy.db"
 )
 
+type TxInterface interface {
+	// 获取字段(TN=>TypeName)的值.
+	// 函数体实际上是{ return self.TN }.
+	GET_TN() string
+
+	// 计算类型的名字(calc type name).
+	// if  (modifyTN == true) { TN = TypeName }.
+	CALC_TN(modifyTN bool) string
+
+	// 将自身转成json字符串.
+	// 转换失败的话,如果(panicWhenError == true),就panic; 否则返回空字符串.
+	TO_JSON(panicWhenError bool) string
+}
+
+func inner_check_by_compile() {
+	//这个函数作用: 在编译时,检查各个结构体是否进行正常书写.
+	slice_ := make([]TxInterface, 0)
+	slice_ = append(slice_, new(AddAgentReq))
+	slice_ = append(slice_, new(AddAgentRsp))
+}
+
 type ReportReq struct {
 	UserId  int64
 	RefId   int64     //rowId
@@ -44,11 +65,6 @@ type ReportData struct {
 	Group4  string
 }
 
-type TxData struct {
-	Type string
-	Data interface{}
-}
-
 type ProxyReqRsp struct {
 	UserId     int64     `xorm:"notnull"`             //(req)
 	RefId      int64     `xorm:"notnull pk autoincr"` //(req)row_id(数据库里的第几行)
@@ -64,4 +80,26 @@ type ProxyReqRsp struct {
 	RspCode    int       //(rsp)
 	RspMessage string    //(rsp)
 	UpdateTime time.Time `xorm:"updated"` //这个Field将在Insert或Update时自动赋值为当前时间
+}
+
+type AddAgentReq struct {
+	TN    string
+	ReqId int //请求ID.
+	Id    int64
+	Memo  string
+}
+
+type AddAgentRsp struct {
+	TN      string
+	Code    int
+	Message string
+	DataReq *AddAgentReq
+}
+
+type AgentInfo struct {
+	Id         int64     `xorm:"notnull pk autoincr"`
+	Memo       string    //备注
+	LastRefId  int64     `xorm:"notnull"`
+	CreateTime time.Time `xorm:"created"`
+	UpdateTime time.Time `xorm:"updated"`
 }

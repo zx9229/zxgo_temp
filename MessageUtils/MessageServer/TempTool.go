@@ -57,3 +57,12 @@ func ReportReq_2_ReportData(req *TxStruct.ReportReq) *TxStruct.ReportData {
 	//
 	return data
 }
+
+func AddAgentReq_2_AgentInfo(dataReq *TxStruct.AddAgentReq) *TxStruct.AgentInfo {
+	data := new(TxStruct.AgentInfo)
+	//
+	data.Id = dataReq.Id
+	data.Memo = dataReq.Memo
+	//
+	return data
+}
