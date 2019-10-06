@@ -1,9 +1,0 @@
-{
-    "Host": "localhost",
-    "Port": 8080,
-    "DB_DriverName": "sqlite3",
-    "DB_DataSourceName": "test.db",
-    "DB_LocationName": "Asia/Shanghai",
-    "RootUser_Id": 0,
-    "RootUser_Password": "123"
-}
